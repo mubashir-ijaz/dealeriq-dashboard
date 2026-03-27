@@ -58,7 +58,6 @@ export default function Overview() {
           {stats.map(s => {
             const meta  = SOURCE_META[s.source] || {};
             const topMk = Object.entries(s.byMake).sort((a,b)=>b[1]-a[1]).slice(0,2);
-            const topSl = Object.entries(s.bySeller).sort((a,b)=>b[1]-a[1])[0];
             const titleBad = s.byTitle
               ? Object.entries(s.byTitle).filter(([t])=>['Not Received','Unavailable'].includes(t)).reduce((s,[,c])=>s+c,0)
               : null;

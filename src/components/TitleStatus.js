@@ -78,7 +78,6 @@ function SourceTitleCard({ sheetLabel, source }) {
   const goodCount    = (cfg.good || []).reduce((s,k) => s+(groups[k]?.length||0), 0);
   const warnCount    = (cfg.warn || []).reduce((s,k) => s+(groups[k]?.length||0), 0);
   const okCount      = (cfg.ok   || []).reduce((s,k) => s+(groups[k]?.length||0), 0);
-  const totalWithTitle = rows.filter(r => r[cfg.field] && r[cfg.field] !== '—').length;
 
   return (
     <div style={{ background:'var(--card)', border:`1px solid var(--border)`, borderRadius:13, padding:20, borderTop:`3px solid ${meta.color}` }}>
