@@ -10,7 +10,7 @@ const SHEETS = [
     source:'edge',
   },
   {
-    id:    '1xOC83pzacFQSgVzwg5hlenW1xaCZCAto',
+    id:    '1mZkc43Utv7sqgXPzGSzXEXlciXcD0xSWd-8_3RygpxA',
     tab:   'last year now carmax',
     label: 'CarMax',
     source:'carmax',
@@ -63,7 +63,7 @@ async function fetchSheet({ id, tab }) {
   }).filter(row => Object.values(row).some(v => v !== '' && v !== null && v !== undefined));
 }
 
-// Fetch all 3 sheets in parallel
+// Fetch all sheets in parallel
 export async function fetchAllSheets() {
   const results = await Promise.all(
     SHEETS.map(async sheet => {
