@@ -9,10 +9,12 @@ import ChartsPage from '../components/ChartsPage';
 import ChatBot from '../components/ChatBot';
 import TitleStatus from '../components/TitleStatus';
 import DateFilter from '../components/DateFilter';
+import Activity from '../components/Activity';
 import { RefreshCw, Loader, AlertCircle } from 'lucide-react';
 
 const PAGE_TITLE = {
   overview:   '📊  Overview',
+  activity:   '📅  Activity',
   charts:     '📈  Charts & Trends',
   crossmatch: '🔗  Cross-Match VINs',
   titles:     '📋  Title Status',
@@ -49,7 +51,7 @@ export default function Dashboard() {
 
   const title = page === 'sheet' ? active : PAGE_TITLE[page];
   const nav   = (p, sh) => { setPage(p); if (sh !== undefined) setActive(sh); };
-  const showDateFilter = ['overview','charts','crossmatch','titles'].includes(page);
+  const showDateFilter = ['overview','activity','charts','crossmatch','titles'].includes(page);
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
@@ -78,6 +80,7 @@ export default function Dashboard() {
         {/* Page content */}
         <div style={{ flex:1, overflow:'auto', padding:'20px 24px', animation:'fadeUp 0.25s ease' }}>
           {page === 'overview'   && <Overview />}
+          {page === 'activity'   && <Activity />}
           {page === 'charts'     && <ChartsPage />}
           {page === 'crossmatch' && <CrossMatch />}
           {page === 'titles'     && <TitleStatus />}
