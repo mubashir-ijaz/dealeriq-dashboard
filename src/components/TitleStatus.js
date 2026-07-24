@@ -80,7 +80,7 @@ function SourceTitleCard({ sheetLabel, source }) {
   const okCount      = (cfg.ok   || []).reduce((s,k) => s+(groups[k]?.length||0), 0);
 
   return (
-    <div style={{ background:'var(--card)', border:`1px solid var(--border)`, borderRadius:13, padding:20, borderTop:`3px solid ${meta.color}` }}>
+    <div style={{ background:'var(--card)', border:`1px solid var(--border)`, borderRadius:13, padding:20, borderTop:`3px solid ${meta.color}`, boxShadow:'var(--shadow-sm)' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
         <div style={{ width:9, height:9, borderRadius:'50%', background:meta.color }}/>
@@ -193,17 +193,17 @@ export default function TitleStatus() {
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
       {/* Grand summary */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid #10b981', borderRadius:12, padding:'16px 20px' }}>
-          <div style={{ fontSize:28, fontWeight:800, color:'#10b981' }}>{grandReleased}</div>
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid #059669', borderRadius:12, padding:'16px 20px', boxShadow:'var(--shadow-sm)' }}>
+          <div style={{ fontSize:28, fontWeight:800, color:'#059669' }}>{grandReleased}</div>
           <div style={{ fontSize:11, color:'var(--text2)', marginTop:3, textTransform:'uppercase', letterSpacing:'0.8px' }}>✅ Released / Available</div>
           <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>Titles cleared across all sources</div>
         </div>
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid #ef4444', borderRadius:12, padding:'16px 20px' }}>
-          <div style={{ fontSize:28, fontWeight:800, color:'#ef4444' }}>{grandNeedAction}</div>
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid #dc2626', borderRadius:12, padding:'16px 20px', boxShadow:'var(--shadow-sm)' }}>
+          <div style={{ fontSize:28, fontWeight:800, color:'#dc2626' }}>{grandNeedAction}</div>
           <div style={{ fontSize:11, color:'var(--text2)', marginTop:3, textTransform:'uppercase', letterSpacing:'0.8px' }}>⚠ Not Received / Unavailable</div>
           <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>Action required</div>
         </div>
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid var(--text3)', borderRadius:12, padding:'16px 20px' }}>
+        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid var(--text3)', borderRadius:12, padding:'16px 20px', boxShadow:'var(--shadow-sm)' }}>
           <div style={{ fontSize:28, fontWeight:800 }}>{grandTotal}</div>
           <div style={{ fontSize:11, color:'var(--text2)', marginTop:3, textTransform:'uppercase', letterSpacing:'0.8px' }}>Total Tracked Vehicles</div>
           <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>ADESA + CarMax</div>
@@ -211,7 +211,7 @@ export default function TitleStatus() {
       </div>
 
       {/* Explainer */}
-      <div style={{ background:'rgba(232,114,12,0.07)', border:'1px solid rgba(232,114,12,0.2)', borderRadius:11, padding:'12px 16px', fontSize:13, color:'var(--text2)', lineHeight:1.7 }}>
+      <div style={{ background:'rgba(79,70,229,0.06)', border:'1px solid rgba(79,70,229,0.18)', borderRadius:11, padding:'12px 16px', fontSize:13, color:'var(--text2)', lineHeight:1.7 }}>
         <strong style={{ color:'var(--accent)' }}>Title tracking</strong> is available for <strong>ADESA</strong> and <strong>CarMax</strong> only. Edge Pipeline and OpenLane do not include title status in their data. Click any status row to expand and see individual vehicles.
       </div>
 

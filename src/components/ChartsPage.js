@@ -4,8 +4,10 @@ import { useData } from '../context/DataContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, CartesianGrid, Legend } from 'recharts';
 import { SOURCE_META } from '../utils/schema';
 
-const COLORS = ['#e8720c','#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#a78bfa'];
-const TT = { contentStyle:{ background:'#0d0d15', border:'1px solid #181828', borderRadius:9, color:'#eef2ff', fontSize:12 }, labelStyle:{ color:'#7880a0' } };
+const COLORS = ['#4f46e5','#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#db2777','#65a30d','#9333ea'];
+const GRID = '#e6e8f0';
+const AXIS = { fill:'#5b5f6d', fontSize:11 };
+const TT = { contentStyle:{ background:'#ffffff', border:'1px solid #e6e8f0', borderRadius:9, color:'#12131a', fontSize:12, boxShadow:'0 4px 16px rgba(20,20,43,0.1)' }, labelStyle:{ color:'#5b5f6d' } };
 const fmtK = v => '$'+Math.round(v/1000)+'k';
 const fmt  = v => '$'+Math.round(v||0).toLocaleString();
 
@@ -63,9 +65,9 @@ export default function ChartsPage() {
       <CC title="Vehicles per Source">
         <ResponsiveContainer width="100%" height={210}>
           <BarChart data={sourceBar} margin={{top:0,right:8,left:0,bottom:0}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis dataKey="name" tick={{fill:'#7880a0',fontSize:11}}/>
-            <YAxis tick={{fill:'#7880a0',fontSize:11}} allowDecimals={false}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis dataKey="name" tick={AXIS}/>
+            <YAxis tick={AXIS} allowDecimals={false}/>
             <Tooltip {...TT}/>
             <Bar dataKey="veh" name="Vehicles" radius={[6,6,0,0]}>
               {sourceBar.map((s,i)=><Cell key={i} fill={s.color}/>)}
@@ -77,9 +79,9 @@ export default function ChartsPage() {
       <CC title="Total Spend per Source">
         <ResponsiveContainer width="100%" height={210}>
           <BarChart data={sourceBar} margin={{top:0,right:8,left:0,bottom:0}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis dataKey="name" tick={{fill:'#7880a0',fontSize:11}}/>
-            <YAxis tickFormatter={fmtK} tick={{fill:'#7880a0',fontSize:11}}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis dataKey="name" tick={AXIS}/>
+            <YAxis tickFormatter={fmtK} tick={AXIS}/>
             <Tooltip {...TT} formatter={v=>fmt(v)}/>
             <Bar dataKey="spend" name="Total Spend" radius={[6,6,0,0]}>
               {sourceBar.map((s,i)=><Cell key={i} fill={s.color}/>)}
@@ -91,11 +93,11 @@ export default function ChartsPage() {
       <CC title="Monthly Purchase Volume (All Sources)" wide>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={monthData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis dataKey="month" tick={{fill:'#7880a0',fontSize:10}}/>
-            <YAxis tick={{fill:'#7880a0',fontSize:11}} allowDecimals={false}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis dataKey="month" tick={{ fill:AXIS.fill, fontSize:10 }}/>
+            <YAxis tick={AXIS} allowDecimals={false}/>
             <Tooltip {...TT}/>
-            <Line type="monotone" dataKey="count" stroke="#e8720c" strokeWidth={2.5} dot={{fill:'#e8720c',r:3}} name="Vehicles"/>
+            <Line type="monotone" dataKey="count" stroke="#4f46e5" strokeWidth={2.5} dot={{fill:'#4f46e5',r:3}} name="Vehicles"/>
           </LineChart>
         </ResponsiveContainer>
       </CC>
@@ -103,9 +105,9 @@ export default function ChartsPage() {
       <CC title="Top 10 Makes — All Sources">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={makeData} layout="vertical" margin={{left:6}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis type="number" tick={{fill:'#7880a0',fontSize:11}} allowDecimals={false}/>
-            <YAxis dataKey="name" type="category" tick={{fill:'#7880a0',fontSize:11}} width={65}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis type="number" tick={AXIS} allowDecimals={false}/>
+            <YAxis dataKey="name" type="category" tick={AXIS} width={65}/>
             <Tooltip {...TT}/>
             <Bar dataKey="value" name="Count" radius={[0,5,5,0]}>
               {makeData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
@@ -117,14 +119,14 @@ export default function ChartsPage() {
       <CC title="Price Range — Min / Avg / Max per Source">
         <ResponsiveContainer width="100%" height={210}>
           <BarChart data={priceRange}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis dataKey="name" tick={{fill:'#7880a0',fontSize:11}}/>
-            <YAxis tickFormatter={fmtK} tick={{fill:'#7880a0',fontSize:11}}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis dataKey="name" tick={AXIS}/>
+            <YAxis tickFormatter={fmtK} tick={AXIS}/>
             <Tooltip {...TT} formatter={v=>fmt(v)}/>
-            <Legend iconType="circle" wrapperStyle={{fontSize:11,color:'#7880a0'}}/>
-            <Bar dataKey="min" name="Min"  fill="#3b82f6" radius={[4,4,0,0]}/>
-            <Bar dataKey="avg" name="Avg"  fill="#e8720c" radius={[4,4,0,0]}/>
-            <Bar dataKey="max" name="Max"  fill="#8b5cf6" radius={[4,4,0,0]}/>
+            <Legend iconType="circle" wrapperStyle={{fontSize:11,color:'#5b5f6d'}}/>
+            <Bar dataKey="min" name="Min"  fill="#2563eb" radius={[4,4,0,0]}/>
+            <Bar dataKey="avg" name="Avg"  fill="#4f46e5" radius={[4,4,0,0]}/>
+            <Bar dataKey="max" name="Max"  fill="#7c3aed" radius={[4,4,0,0]}/>
           </BarChart>
         </ResponsiveContainer>
       </CC>
@@ -132,9 +134,9 @@ export default function ChartsPage() {
       <CC title="Vehicle Model Year Distribution">
         <ResponsiveContainer width="100%" height={210}>
           <BarChart data={yearData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis dataKey="year" tick={{fill:'#7880a0',fontSize:10}}/>
-            <YAxis tick={{fill:'#7880a0',fontSize:11}} allowDecimals={false}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis dataKey="year" tick={{ fill:AXIS.fill, fontSize:10 }}/>
+            <YAxis tick={AXIS} allowDecimals={false}/>
             <Tooltip {...TT}/>
             <Bar dataKey="count" name="Vehicles" radius={[4,4,0,0]}>
               {yearData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
@@ -148,7 +150,7 @@ export default function ChartsPage() {
           <PieChart>
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={85} dataKey="value"
               label={({name,percent})=>`${name.split(' ')[0]} ${(percent*100).toFixed(0)}%`}
-              labelLine={{stroke:'#363660'}}>
+              labelLine={{stroke:'#c7cbd9'}}>
               {pieData.map((d,i)=><Cell key={i} fill={d.color||COLORS[i]}/>)}
             </Pie>
             <Tooltip {...TT}/>
@@ -159,11 +161,11 @@ export default function ChartsPage() {
       <CC title="Top Sellers / Auctions — All Sources">
         <ResponsiveContainer width="100%" height={210}>
           <BarChart data={sellerData} layout="vertical" margin={{left:6}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#181828"/>
-            <XAxis type="number" tick={{fill:'#7880a0',fontSize:11}} allowDecimals={false}/>
-            <YAxis dataKey="name" type="category" tick={{fill:'#7880a0',fontSize:10}} width={90}/>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID}/>
+            <XAxis type="number" tick={AXIS} allowDecimals={false}/>
+            <YAxis dataKey="name" type="category" tick={{ fill:AXIS.fill, fontSize:10 }} width={90}/>
             <Tooltip {...TT}/>
-            <Bar dataKey="value" name="Vehicles" fill="#10b981" radius={[0,5,5,0]}/>
+            <Bar dataKey="value" name="Vehicles" fill="#059669" radius={[0,5,5,0]}/>
           </BarChart>
         </ResponsiveContainer>
       </CC>
@@ -174,7 +176,7 @@ export default function ChartsPage() {
 
 function CC({ title, children, wide }) {
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20, gridColumn: wide?'span 2':'auto' }}>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20, gridColumn: wide?'span 2':'auto', boxShadow:'var(--shadow-sm)' }}>
       <h3 style={{ fontSize:10, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', marginBottom:14 }}>{title}</h3>
       {children}
     </div>

@@ -1,14 +1,14 @@
 // src/context/DataContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchAllSheets } from '../utils/sheets';
-import { normalizeSheet, computeStats, crossMatchVINs, buildAISummary } from '../utils/schema';
+import { normalizeSheet, computeStats, crossMatchVINs, buildAISummary, dedupeByVIN } from '../utils/schema';
 import { applyDateFilter } from '../utils/dateFilter';
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
   const [raw, setRaw] = useState({
-    sheets: [], normalized: {}, loading: true, error: null, lastRefresh: null,
+    sheets: [], normalized: {}, loading: true, error: null, lastRefresh: null, duplicatesRemoved: 0,
   });
   const [dateFilter, setDateFilter] = useState('all');
 
@@ -17,10 +17,13 @@ export function DataProvider({ children }) {
     try {
       const sheets     = await fetchAllSheets();
       const normalized = {};
+      let duplicatesRemoved = 0;
       sheets.forEach(sheet => {
-        normalized[sheet.label] = normalizeSheet(sheet.rows, sheet.source);
+        const { rows, duplicates } = dedupeByVIN(normalizeSheet(sheet.rows, sheet.source));
+        normalized[sheet.label] = rows;
+        duplicatesRemoved += duplicates;
       });
-      setRaw({ sheets, normalized, loading: false, error: null, lastRefresh: new Date() });
+      setRaw({ sheets, normalized, loading: false, error: null, lastRefresh: new Date(), duplicatesRemoved });
     } catch (e) {
       setRaw(s => ({ ...s, loading: false, error: e.message }));
     }
@@ -50,6 +53,7 @@ export function DataProvider({ children }) {
       loading:       raw.loading,
       error:         raw.error,
       lastRefresh:   raw.lastRefresh,
+      duplicatesRemoved: raw.duplicatesRemoved,
       dateFilter,    setDateFilter,
       reload:        load,
     }}>

@@ -22,7 +22,7 @@ const PAGE_TITLE = {
 };
 
 export default function Dashboard() {
-  const { loading, error, reload, lastRefresh } = useData();
+  const { loading, error, reload, lastRefresh, duplicatesRemoved } = useData();
   const [page,   setPage]   = useState('overview');
   const [active, setActive] = useState(null);
 
@@ -59,10 +59,15 @@ export default function Dashboard() {
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {/* Topbar */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px', borderBottom:'1px solid var(--border)', background:'var(--bg2)', flexShrink:0, gap:16, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px', borderBottom:'1px solid var(--border)', background:'var(--bg2)', flexShrink:0, gap:16, flexWrap:'wrap', boxShadow:'var(--shadow-sm)', zIndex:1 }}>
           <div>
             <h1 style={{ fontSize:17, fontWeight:800, letterSpacing:'-0.3px' }}>{title}</h1>
-            {lastRefresh && <p style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)', marginTop:1 }}>Live · synced {lastRefresh.toLocaleTimeString()}</p>}
+            {lastRefresh && (
+              <p style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)', marginTop:1 }}>
+                Live · synced {lastRefresh.toLocaleTimeString()}
+                {duplicatesRemoved > 0 && <span style={{ color:'var(--amber)' }}> · {duplicatesRemoved} duplicate VIN{duplicatesRemoved===1?'':'s'} auto-removed</span>}
+              </p>
+            )}
           </div>
 
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>

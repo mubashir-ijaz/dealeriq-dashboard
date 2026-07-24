@@ -18,7 +18,7 @@ export default function DateFilter() {
         {DATE_FILTERS.map(f => (
           <button key={f.id} onClick={() => setDateFilter(f.id)}
             style={{ padding:'5px 12px', borderRadius:7, border:'none', background: dateFilter===f.id ? 'var(--accent)' : 'transparent', color: dateFilter===f.id ? '#fff' : 'var(--text2)', fontSize:12, fontWeight: dateFilter===f.id ? 700 : 500, cursor:'pointer', fontFamily:'var(--font)', transition:'all 0.15s', whiteSpace:'nowrap' }}
-            onMouseEnter={e=>{ if(dateFilter!==f.id){ e.currentTarget.style.color='var(--text)'; e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}}
+            onMouseEnter={e=>{ if(dateFilter!==f.id){ e.currentTarget.style.color='var(--text)'; e.currentTarget.style.background='var(--hover)'; }}}
             onMouseLeave={e=>{ if(dateFilter!==f.id){ e.currentTarget.style.color='var(--text2)'; e.currentTarget.style.background='transparent'; }}}
           >{f.label}</button>
         ))}

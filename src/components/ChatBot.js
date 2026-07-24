@@ -42,12 +42,12 @@ export default function ChatBot() {
     <div style={{ display: 'flex', gap: 18, height: 'calc(100vh - 130px)' }}>
 
       {/* Chat panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 18px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(232,114,12,0.13)', border: '1px solid rgba(232,114,12,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(79,70,229,0.1)', border: '1px solid rgba(79,70,229,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bot size={17} color="var(--accent)" />
             </div>
             <div>
@@ -141,7 +141,7 @@ export default function ChatBot() {
 
 function Avatar({ role }) {
   return (
-    <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: role === 'assistant' ? 'rgba(232,114,12,0.13)' : 'rgba(59,130,246,0.13)' }}>
+    <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: role === 'assistant' ? 'rgba(79,70,229,0.1)' : 'rgba(37,99,235,0.1)' }}>
       {role === 'assistant' ? <Bot size={14} color="var(--accent)" /> : <User size={14} color="var(--blue)" />}
     </div>
   );
@@ -192,7 +192,7 @@ function inlineFmt(text) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((p, i) => {
     if (p.startsWith('**') && p.endsWith('**')) return <strong key={i}>{p.slice(2,-2)}</strong>;
-    if (p.startsWith('`')  && p.endsWith('`'))  return <code key={i} style={{ fontFamily: 'var(--mono)', fontSize: 11, background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: 4 }}>{p.slice(1,-1)}</code>;
+    if (p.startsWith('`')  && p.endsWith('`'))  return <code key={i} style={{ fontFamily: 'var(--mono)', fontSize: 11, background: 'var(--hover)', padding: '1px 5px', borderRadius: 4 }}>{p.slice(1,-1)}</code>;
     return p;
   });
 }

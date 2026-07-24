@@ -19,7 +19,7 @@ export default function CrossMatch() {
           ['Sources Compared',     3,               '#3b82f6'],
           ['Possible Duplicates',  matched.length, '#10b981'],
         ].map(([l,v,c])=>(
-          <div key={l} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', borderTop:`2px solid ${c}` }}>
+          <div key={l} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', borderTop:`2px solid ${c}`, boxShadow:'var(--shadow-sm)' }}>
             <div style={{ fontSize:26, fontWeight:800 }}>{v}</div>
             <div style={{ fontSize:11, color:'var(--text2)', marginTop:3, textTransform:'uppercase', letterSpacing:'0.8px' }}>{l}</div>
           </div>
@@ -57,7 +57,7 @@ export default function CrossMatch() {
               const prices  = entries.map(e => e.row.totalCost || e.row.price || 0).filter(Boolean);
               const spread  = prices.length > 1 ? Math.max(...prices) - Math.min(...prices) : 0;
               return (
-                <div key={vin} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18 }}>
+                <div key={vin} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap' }}>
                     <code style={{ fontSize:13, fontWeight:800, color:'var(--amber)', fontFamily:'var(--mono)', letterSpacing:1 }}>{vin}</code>
                     <span style={{ background:'rgba(139,92,246,0.15)', color:'var(--purple)', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>{entries.length} Sources</span>

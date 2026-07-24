@@ -24,11 +24,11 @@ export default function Sidebar({ page, active, onNav }) {
   }, 0);
 
   return (
-    <aside style={{ width:220, minWidth:220, background:'var(--bg2)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column' }}>
+    <aside style={{ width:220, minWidth:220, background:'var(--bg2)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', boxShadow:'var(--shadow-sm)', zIndex:2 }}>
       {/* Logo */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 14px 13px', borderBottom:'1px solid var(--border)' }}>
-        <div style={{ width:34, height:34, borderRadius:9, background:'rgba(232,114,12,0.14)', border:'1px solid rgba(232,114,12,0.22)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Car size={17} color="#e8720c"/>
+        <div style={{ width:34, height:34, borderRadius:9, background:'rgba(79,70,229,0.1)', border:'1px solid rgba(79,70,229,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Car size={17} color="var(--accent)"/>
         </div>
         <div>
           <div style={{ fontSize:16, fontWeight:800, letterSpacing:'-0.3px' }}>DealerIQ</div>
@@ -68,7 +68,7 @@ export default function Sidebar({ page, active, onNav }) {
             <button key={sheet.label}
               onClick={() => onNav('sheet', sheet.label)}
               style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}18`:'transparent', color: isActive?meta.color:'var(--text2)', fontSize:12, fontWeight: isActive?700:400, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.color='var(--text)'; }}}
+              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--text)'; }}}
               onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text2)'; }}}
             >
               <Circle size={8} fill={meta.color} color={meta.color} style={{ flexShrink:0 }}/>
@@ -97,8 +97,8 @@ function Lbl({ children }) {
 function Btn({ active, onClick, children }) {
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'9px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: active?'rgba(232,114,12,0.13)':'transparent', color: active?'var(--accent)':'var(--text2)', fontSize:13, fontWeight: active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.color='var(--text)'; }}}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'9px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: active?'rgba(79,70,229,0.1)':'transparent', color: active?'var(--accent)':'var(--text2)', fontSize:13, fontWeight: active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--text)'; }}}
       onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text2)'; }}}
     >
       {children}

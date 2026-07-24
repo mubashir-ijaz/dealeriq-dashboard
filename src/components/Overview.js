@@ -62,7 +62,7 @@ export default function Overview() {
               ? Object.entries(s.byTitle).filter(([t])=>['Not Received','Unavailable'].includes(t)).reduce((s,[,c])=>s+c,0)
               : null;
             return (
-              <div key={s.label} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, borderTop:`3px solid ${meta.color}` }}>
+              <div key={s.label} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, borderTop:`3px solid ${meta.color}`, boxShadow:'var(--shadow-sm)' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:13 }}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background:meta.color, flexShrink:0 }}/>
                   <span style={{ fontWeight:800, fontSize:13, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
@@ -147,7 +147,7 @@ export default function Overview() {
 
 function KPI({ label, value, sub, icon, accent }) {
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', position:'relative', overflow:'hidden' }}>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', position:'relative', overflow:'hidden', boxShadow:'var(--shadow-sm)' }}>
       <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:accent }}/>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
         <span style={{ fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text2)' }}>{label}</span>
@@ -176,7 +176,7 @@ function Row({ title, children }) {
 }
 function Card({ title, children }) {
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18 }}>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
       <h3 style={{ fontSize:10, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', marginBottom:13 }}>{title}</h3>
       {children}
     </div>

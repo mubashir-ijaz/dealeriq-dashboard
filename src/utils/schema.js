@@ -350,8 +350,28 @@ export function miles(v) {
 
 export function parseDate(v) {
   if (!v) return null;
-  const d = new Date(v);
+  const s = String(v);
+  // Defensive: handle Google's raw Date(yyyy,m,d) format if it ever slips through
+  const gm = s.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (gm) return new Date(Number(gm[1]), Number(gm[2]), Number(gm[3]));
+  const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// Remove rows with a duplicate VIN within the same source (keeps the first
+// occurrence — sheets are upserted with newest rows at the top).
+export function dedupeByVIN(rows) {
+  const seen = new Set();
+  const deduped = [];
+  let duplicates = 0;
+  rows.forEach(r => {
+    const vin = String(r.vin || '').trim().toUpperCase();
+    if (!vin || vin.length < 6) { deduped.push(r); return; }
+    if (seen.has(vin)) { duplicates++; return; }
+    seen.add(vin);
+    deduped.push(r);
+  });
+  return { rows: deduped, duplicates };
 }
 
 function str(v) { return v === null || v === undefined ? '' : String(v).trim(); }

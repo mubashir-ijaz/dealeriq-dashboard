@@ -183,7 +183,7 @@ function SourceSection({ sheet, rows }) {
   }
 
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `3px solid ${meta.color}`, borderRadius: 12, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `3px solid ${meta.color}`, borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
 
       {/* Header */}
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
@@ -277,7 +277,7 @@ function SourceSection({ sheet, rows }) {
 // ─── Subcomponents ─────────────────────────────────────────────────────
 function KPI({ label, value, icon, accent }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `3px solid ${accent}`, borderRadius: 12, padding: 16 }}>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `3px solid ${accent}`, borderRadius: 12, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</span>
         {icon}
@@ -289,7 +289,7 @@ function KPI({ label, value, icon, accent }) {
 
 function Card({ title, children }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
       <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 12 }}>{title}</h3>
       {children}
     </div>
