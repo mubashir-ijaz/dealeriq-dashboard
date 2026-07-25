@@ -53,7 +53,7 @@ export default function Overview() {
       </div>
 
       {/* Per-source cards */}
-      <Row title="Source Breakdown">
+      <Row title="Purchases by Source">
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
           {stats.map(s => {
             const meta  = SOURCE_META[s.source] || {};
@@ -73,11 +73,11 @@ export default function Overview() {
                   <Chip label="Avg Price" value={fmt(s.avgPrice)} />
                   <Chip label="Max"       value={fmt(s.maxPrice)} />
                   {topMk.length > 0 && <div style={{ gridColumn:'span 2', background:'var(--bg3)', borderRadius:7, padding:'7px 9px' }}>
-                    <div style={{ fontSize:9, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:2 }}>Top Makes</div>
+                    <div style={{ fontSize:10.5, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:3, fontWeight:600 }}>Top Makes</div>
                     <div style={{ fontSize:12, fontWeight:600 }}>{topMk.map(([m,c])=>`${m} (${c})`).join(' · ')}</div>
                   </div>}
                   {titleBad !== null && <div style={{ gridColumn:'span 2', background: titleBad > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)', border:`1px solid ${titleBad>0?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)'}`, borderRadius:7, padding:'7px 9px' }}>
-                    <div style={{ fontSize:9, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:2 }}>Title Alerts</div>
+                    <div style={{ fontSize:10.5, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:3, fontWeight:600 }}>Title Alerts</div>
                     <div style={{ fontSize:13, fontWeight:800, color: titleBad > 0 ? '#ef4444' : '#10b981' }}>
                       {titleBad > 0 ? `⚠ ${titleBad} need action` : '✅ All clear'}
                     </div>
@@ -91,7 +91,7 @@ export default function Overview() {
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
         {/* Top Makes */}
-        <Card title="Top Makes — All Sources">
+        <Card title="Most Purchased Makes">
           {topMakes.map(([make, count]) => (
             <div key={make} style={{ marginBottom:10 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
@@ -107,7 +107,7 @@ export default function Overview() {
 
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {/* Years */}
-          <Card title="Vehicle Model Years">
+          <Card title="Vehicles by Model Year">
             <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
               {topYears.map(([yr, count]) => (
                 <div key={yr} style={{ background:'var(--bg3)', border:'1px solid var(--border2)', borderRadius:9, padding:'8px 13px', textAlign:'center' }}>
@@ -119,13 +119,13 @@ export default function Overview() {
           </Card>
 
           {/* Cross-match preview */}
-          <Card title="Cross-Matched VINs">
+          <Card title="Same Vehicle in Multiple Sources">
             {crossMatch.matched.length === 0
-              ? <p style={{ color:'var(--text3)', fontSize:13 }}>No VINs found in multiple sheets.</p>
+              ? <p style={{ color:'var(--text3)', fontSize:13 }}>No matching vehicles found — every VIN appears in only one source.</p>
               : <>
                   <p style={{ color:'var(--text2)', fontSize:13, marginBottom:10 }}>
                     <span style={{ color:'var(--purple)', fontWeight:800, fontSize:22 }}>{crossMatch.matched.length}</span>
-                    {' '}VINs in 2+ sources
+                    {' '}vehicles show up in more than one source
                   </p>
                   {crossMatch.matched.slice(0,4).map(({ vin, entries }) => (
                     <div key={vin} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, flexWrap:'wrap' }}>
@@ -150,7 +150,7 @@ function KPI({ label, value, sub, icon, accent }) {
     <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', position:'relative', overflow:'hidden', boxShadow:'var(--shadow-sm)' }}>
       <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:accent }}/>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text2)' }}>{label}</span>
+        <span style={{ fontSize:10.5, fontWeight:700, letterSpacing:'0.6px', textTransform:'uppercase', color:'var(--text2)' }}>{label}</span>
         {icon}
       </div>
       <div style={{ fontSize:22, fontWeight:800, letterSpacing:'-0.5px' }}>{value}</div>
@@ -161,7 +161,7 @@ function KPI({ label, value, sub, icon, accent }) {
 function Chip({ label, value }) {
   return (
     <div style={{ background:'var(--bg3)', borderRadius:7, padding:'7px 9px' }}>
-      <div style={{ fontSize:9, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:2 }}>{label}</div>
+      <div style={{ fontSize:10.5, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:3, fontWeight:600 }}>{label}</div>
       <div style={{ fontSize:12, fontWeight:700, fontFamily:'var(--mono)' }}>{value||'—'}</div>
     </div>
   );
@@ -169,7 +169,7 @@ function Chip({ label, value }) {
 function Row({ title, children }) {
   return (
     <div>
-      <h3 style={{ fontSize:10, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', marginBottom:12 }}>{title}</h3>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:12 }}>{title}</h3>
       {children}
     </div>
   );
@@ -177,7 +177,7 @@ function Row({ title, children }) {
 function Card({ title, children }) {
   return (
     <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
-      <h3 style={{ fontSize:10, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', marginBottom:13 }}>{title}</h3>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:14 }}>{title}</h3>
       {children}
     </div>
   );

@@ -177,7 +177,7 @@ export default function ChartsPage() {
 function CC({ title, children, wide }) {
   return (
     <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20, gridColumn: wide?'span 2':'auto', boxShadow:'var(--shadow-sm)' }}>
-      <h3 style={{ fontSize:10, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', marginBottom:14 }}>{title}</h3>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:14 }}>{title}</h3>
       {children}
     </div>
   );

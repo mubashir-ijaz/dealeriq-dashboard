@@ -10,15 +10,15 @@ import ChatBot from '../components/ChatBot';
 import TitleStatus from '../components/TitleStatus';
 import DateFilter from '../components/DateFilter';
 import Activity from '../components/Activity';
-import { RefreshCw, Loader, AlertCircle } from 'lucide-react';
+import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare } from 'lucide-react';
 
-const PAGE_TITLE = {
-  overview:   '📊  Overview',
-  activity:   '📅  Activity',
-  charts:     '📈  Charts & Trends',
-  crossmatch: '🔗  Cross-Match VINs',
-  titles:     '📋  Title Status',
-  chat:       '🤖  AI Assistant',
+const PAGE_INFO = {
+  overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
+  activity:   { title: 'Activity',         subtitle: 'Recent purchases by source, newest first',                       icon: Calendar },
+  charts:     { title: 'Charts & Trends',  subtitle: 'Spend, makes, and purchase volume at a glance',                  icon: BarChart2 },
+  crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
+  titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
+  chat:       { title: 'AI Assistant',     subtitle: 'Ask questions about your purchase data',                         icon: MessageSquare },
 };
 
 export default function Dashboard({ onLogout }) {
@@ -49,7 +49,10 @@ export default function Dashboard({ onLogout }) {
     </div>
   );
 
-  const title = page === 'sheet' ? active : PAGE_TITLE[page];
+  const info  = PAGE_INFO[page];
+  const title = page === 'sheet' ? active : info?.title;
+  const subtitle = page === 'sheet' ? `Raw ${active} data, browsable and searchable` : info?.subtitle;
+  const TitleIcon = info?.icon;
   const nav   = (p, sh) => { setPage(p); if (sh !== undefined) setActive(sh); };
   const showDateFilter = ['overview','activity','charts','crossmatch','titles'].includes(page);
 
@@ -61,9 +64,17 @@ export default function Dashboard({ onLogout }) {
         {/* Topbar */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 24px', borderBottom:'1px solid var(--border)', background:'var(--bg2)', flexShrink:0, gap:16, flexWrap:'wrap', boxShadow:'var(--shadow-sm)', zIndex:1 }}>
           <div>
-            <h1 style={{ fontSize:17, fontWeight:800, letterSpacing:'-0.3px' }}>{title}</h1>
+            <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+              {TitleIcon && (
+                <div style={{ width:30, height:30, borderRadius:8, background:'rgba(79,70,229,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <TitleIcon size={16} color="var(--accent)" />
+                </div>
+              )}
+              <h1 style={{ fontSize:19, fontWeight:800, letterSpacing:'-0.3px' }}>{title}</h1>
+            </div>
+            {subtitle && <p style={{ fontSize:12.5, color:'var(--text2)', marginTop:3, marginLeft: TitleIcon ? 39 : 0 }}>{subtitle}</p>}
             {lastRefresh && (
-              <p style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)', marginTop:1 }}>
+              <p style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)', marginTop:3, marginLeft: TitleIcon ? 39 : 0 }}>
                 Live · synced {lastRefresh.toLocaleTimeString()}
                 {duplicatesRemoved > 0 && <span style={{ color:'var(--amber)' }}> · {duplicatesRemoved} duplicate VIN{duplicatesRemoved===1?'':'s'} auto-removed</span>}
               </p>

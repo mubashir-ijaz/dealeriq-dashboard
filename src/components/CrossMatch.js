@@ -5,7 +5,7 @@ import { SOURCE_META } from '../utils/schema';
 import { GitMerge, Search } from 'lucide-react';
 
 export default function CrossMatch() {
-  const { crossMatch } = useData();
+  const { crossMatch, sheets } = useData();
   const [search, setSearch] = useState('');
   const { matched } = crossMatch;
   const filtered = search ? matched.filter(({ vin }) => vin.toLowerCase().includes(search.toLowerCase())) : matched;
@@ -15,13 +15,13 @@ export default function CrossMatch() {
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
         {[
-          ['VINs in 2+ Sources',   matched.length, '#8b5cf6'],
-          ['Sources Compared',     3,               '#3b82f6'],
-          ['Possible Duplicates',  matched.length, '#10b981'],
+          ['Vehicles Found in 2+ Sources', matched.length,    '#8b5cf6'],
+          ['Sources Compared',             sheets.length || 4, '#3b82f6'],
+          ['Worth Double-Checking',        matched.length,    '#10b981'],
         ].map(([l,v,c])=>(
           <div key={l} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', borderTop:`2px solid ${c}`, boxShadow:'var(--shadow-sm)' }}>
             <div style={{ fontSize:26, fontWeight:800 }}>{v}</div>
-            <div style={{ fontSize:11, color:'var(--text2)', marginTop:3, textTransform:'uppercase', letterSpacing:'0.8px' }}>{l}</div>
+            <div style={{ fontSize:12, color:'var(--text2)', marginTop:3, fontWeight:600 }}>{l}</div>
           </div>
         ))}
       </div>
