@@ -2,7 +2,7 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
-import { LayoutDashboard, BarChart2, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar } from 'lucide-react';
+import { LayoutDashboard, BarChart2, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut } from 'lucide-react';
 
 const NAV = [
   { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview'         },
@@ -13,7 +13,7 @@ const NAV = [
   { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant'     },
 ];
 
-export default function Sidebar({ page, active, onNav }) {
+export default function Sidebar({ page, active, onNav, onLogout }) {
   const { sheets, stats, crossMatch, normalized } = useData();
   const grand = stats.reduce((s,x) => s+x.count, 0);
 
@@ -81,11 +81,18 @@ export default function Sidebar({ page, active, onNav }) {
 
       {/* Footer */}
       <div style={{ padding:'13px 14px', borderTop:'1px solid var(--border)' }}>
-        <div style={{ fontSize:11, color:'var(--text3)', lineHeight:1.9 }}>
+        <div style={{ fontSize:11, color:'var(--text3)', lineHeight:1.9, marginBottom:10 }}>
           <span style={{ color:'var(--accent)', fontWeight:800, fontSize:20 }}>{grand.toLocaleString()}</span>
           <span style={{ display:'block' }}>vehicles in period</span>
           <span style={{ fontSize:10 }}>4 sources · live Google Sheets</span>
         </div>
+        <button onClick={onLogout}
+          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 10px', border:'1px solid var(--border2)', borderRadius:8, background:'transparent', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent'; }}
+        >
+          <LogOut size={13} /> Log Out
+        </button>
       </div>
     </aside>
   );

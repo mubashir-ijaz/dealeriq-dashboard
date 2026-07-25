@@ -21,7 +21,7 @@ const PAGE_TITLE = {
   chat:       '🤖  AI Assistant',
 };
 
-export default function Dashboard() {
+export default function Dashboard({ onLogout }) {
   const { loading, error, reload, lastRefresh, duplicatesRemoved } = useData();
   const [page,   setPage]   = useState('overview');
   const [active, setActive] = useState(null);
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
-      <Sidebar page={page} active={active} onNav={nav} />
+      <Sidebar page={page} active={active} onNav={nav} onLogout={onLogout} />
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {/* Topbar */}
