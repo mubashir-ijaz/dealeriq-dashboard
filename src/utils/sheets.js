@@ -4,8 +4,8 @@
 
 const SHEETS = [
   {
-    id:    '1hCTIZdOnAkOuooDTJOp3xovmReMw1c7T5k1qZRDvRPg',
-    tab:   'edgepipeline_purchased_all',
+    id:    '1A-rUUn-aTEJqUOJ-CvjK71IdAxQCrpgouRf7XWRNlSk',
+    tab:   'Edge',
     label: 'Edge Pipeline',
     source:'edge',
   },
