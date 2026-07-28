@@ -18,7 +18,7 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
   const grand = stats.reduce((s,x) => s+x.count, 0);
 
   // Count unreleased titles for badge
-  const titleAlerts = ['ADESA','CarMax'].reduce((sum, label) => {
+  const titleAlerts = ['ADESA','CarMax','Value My Vehicle'].reduce((sum, label) => {
     const rows = normalized[label] || [];
     return sum + rows.filter(r => ['Not Received','Unavailable'].includes(r.titleStatus)).length;
   }, 0);
@@ -84,7 +84,7 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
         <div style={{ fontSize:11, color:'var(--text3)', lineHeight:1.9, marginBottom:10 }}>
           <span style={{ color:'var(--accent)', fontWeight:800, fontSize:20 }}>{grand.toLocaleString()}</span>
           <span style={{ display:'block' }}>vehicles in period</span>
-          <span style={{ fontSize:10 }}>4 sources · live Google Sheets</span>
+          <span style={{ fontSize:10 }}>{sheets.length} sources · live Google Sheets</span>
         </div>
         <button onClick={onLogout}
           style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 10px', border:'1px solid var(--border2)', borderRadius:8, background:'transparent', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}

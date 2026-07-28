@@ -1,6 +1,7 @@
 // src/pages/Dashboard.js
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { SHEETS } from '../utils/sheets';
 import Sidebar from '../components/Sidebar';
 import Overview from '../components/Overview';
 import SheetView from '../components/SheetView';
@@ -30,7 +31,7 @@ export default function Dashboard({ onLogout }) {
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', gap:16, background:'var(--bg)' }}>
       <Loader size={38} color="var(--accent)" style={{ animation:'spin 1s linear infinite' }} />
       <p style={{ fontFamily:'var(--mono)', fontSize:13, color:'var(--text2)' }}>Loading your data…</p>
-      <p style={{ fontFamily:'var(--mono)', fontSize:11, color:'var(--text3)' }}>Edge · CarMax · OpenLane · ADESA</p>
+      <p style={{ fontFamily:'var(--mono)', fontSize:11, color:'var(--text3)' }}>{SHEETS.map(s => s.label).join(' · ')}</p>
     </div>
   );
 
@@ -40,7 +41,7 @@ export default function Dashboard({ onLogout }) {
       <p style={{ fontSize:18, fontWeight:800 }}>Failed to load sheets</p>
       <p style={{ color:'var(--red)', fontFamily:'var(--mono)', fontSize:12, maxWidth:520 }}>{error}</p>
       <p style={{ color:'var(--text2)', fontSize:13, maxWidth:420, lineHeight:1.8 }}>
-        Make sure all 4 sheets are set to<br/>
+        Make sure all {SHEETS.length} sheets are set to<br/>
         <strong>Share → Anyone with the link → Viewer</strong>
       </p>
       <button onClick={reload} style={{ marginTop:8, padding:'10px 30px', background:'var(--accent)', border:'none', borderRadius:9, color:'#fff', fontWeight:800, fontSize:14, cursor:'pointer' }}>
