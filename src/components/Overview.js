@@ -16,11 +16,11 @@ export default function Overview() {
   }), { count:0, spend:0 });
   grand.avg = grand.count ? grand.spend / grand.count : 0;
 
-  // Title alerts across ADESA + CarMax
-  const titleAlerts = ['ADESA','CarMax'].reduce((sum, label) => {
+  // Title alerts across ADESA + CarMax + Value My Vehicle
+  const titleAlerts = ['ADESA','CarMax','Value My Vehicle'].reduce((sum, label) => {
     return sum + (normalized[label]||[]).filter(r => ['Not Received','Unavailable'].includes(r.titleStatus)).length;
   }, 0);
-  const titlesOk = ['ADESA','CarMax'].reduce((sum, label) => {
+  const titlesOk = ['ADESA','CarMax','Value My Vehicle'].reduce((sum, label) => {
     return sum + (normalized[label]||[]).filter(r => ['Released','Available','Received'].includes(r.titleStatus)).length;
   }, 0);
 
@@ -44,7 +44,7 @@ export default function Overview() {
 
       {/* KPI row */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12 }}>
-        <KPI label="Total Vehicles"  value={fmtN(grand.count)} sub="All 4 sources"       icon={<Car size={16} color="#e8720c"/>}        accent="#e8720c" span={1}/>
+        <KPI label="Total Vehicles"  value={fmtN(grand.count)} sub={`All ${stats.length} sources`} icon={<Car size={16} color="#e8720c"/>}        accent="#e8720c" span={1}/>
         <KPI label="Total Spent"     value={fmt(grand.spend)}  sub="Gross cost"          icon={<DollarSign size={16} color="#10b981"/>}  accent="#10b981" span={1}/>
         <KPI label="Avg Price / Car" value={fmt(grand.avg)}    sub="All sources"         icon={<TrendingUp size={16} color="#3b82f6"/>}  accent="#3b82f6" span={1}/>
         <KPI label="Cross-Matches"   value={fmtN(crossMatch.matched.length)} sub="Same VIN 2+ sheets" icon={<GitMerge size={16} color="#8b5cf6"/>} accent="#8b5cf6" span={1}/>

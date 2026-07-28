@@ -178,7 +178,7 @@ export default function TitleStatus() {
   const { sheets, normalized } = useData();
 
   // Grand title summary across all sources with title data
-  const allTitled = ['ADESA','CarMax'];
+  const allTitled = ['ADESA','CarMax','Value My Vehicle'];
   const grandNeedAction = allTitled.reduce((sum, label) => {
     const rows = normalized[label] || [];
     return sum + rows.filter(r => ['Not Received','Unavailable'].includes(r.titleStatus)).length;

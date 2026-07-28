@@ -7,6 +7,7 @@ export const SOURCE_META = {
   carmax:   { label: 'CarMax',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.25)'  },
   openlane: { label: 'OpenLane',      color: '#e8720c', bg: 'rgba(232,114,12,0.12)', border: 'rgba(232,114,12,0.25)' },
   adesa:    { label: 'ADESA',         color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)' },
+  valuemyvehicle: { label: 'Value My Vehicle', color: '#d4af5a', bg: 'rgba(212,175,90,0.12)', border: 'rgba(212,175,90,0.25)' },
 };
 
 // Title status normalizer — maps any source's title field to standard values
@@ -74,13 +75,13 @@ function normalizeEdge(r) {
 // CM_Status, Selling_Price, Buyers_Fee, Admin_Fee, Total, CM_Total_Cost,
 // CM_Pay_Type, CM_Title, Announcements, Seller, CM_Buyer, Purchaser_Name,
 // Company, Address, City, State_ZIP, Bidder_Number, Entry_No, Error
-function normalizeCarmax(r) {
+function normalizeCarmax(r, source = 'carmax') {
   const price  = money(r['Selling_Price']);
   const bfee   = money(r['Buyers_Fee']);
   const admin  = money(r['Admin_Fee']);
   const total  = money(r['Total'] || r['CM_Total_Cost']) || (price + bfee + admin);
   return {
-    source:    'carmax',
+    source,
     vin:       str(r['VIN'] || r['CM_VIN']).toUpperCase(),
     vinLast6:  str(r['VIN'] || r['CM_VIN']).slice(-6).toUpperCase(),
     year:      str(r['Year']).replace('.0',''),
@@ -231,6 +232,7 @@ export function normalizeRow(row, source) {
   switch (source) {
     case 'edge':     return normalizeEdge(row);
     case 'carmax':   return normalizeCarmax(row);
+    case 'valuemyvehicle': return normalizeCarmax(row, 'valuemyvehicle');
     case 'openlane': return normalizeOpenlane(row);
     case 'adesa':    return normalizeAdesa(row);
     default:         return { source: 'unknown', vin: '', _raw: row };
@@ -296,7 +298,7 @@ export function crossMatchVINs(normalizedSheets) {
 export function buildAISummary(allStats, crossMatch, normalizedSheets) {
   const lines = ['=== MAJOR AUTO SALES — VEHICLE PURCHASE DATA ===\n'];
   const grand = allStats.reduce((s,x) => ({ count: s.count+x.count, spend: s.spend+x.totalSpend }), { count:0, spend:0 });
-  lines.push(`TOTAL: ${grand.count} vehicles | $${Math.round(grand.spend).toLocaleString()} spent across 4 sources\n`);
+  lines.push(`TOTAL: ${grand.count} vehicles | $${Math.round(grand.spend).toLocaleString()} spent across ${allStats.length} sources\n`);
 
   allStats.forEach(s => {
     lines.push(`── ${s.label} [${s.source}] ──`);

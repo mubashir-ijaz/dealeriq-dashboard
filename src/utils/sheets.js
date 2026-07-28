@@ -27,6 +27,12 @@ const SHEETS = [
     label: 'ADESA',
     source:'adesa',
   },
+  {
+    id:    '1flfLQ1VEFDxjN6yPkn5XvQWvU7UkFEgh_qkxxbtOZ5M',
+    tab:   'ValueMyVehicle',
+    label: 'Value My Vehicle',
+    source:'valuemyvehicle',
+  },
 ];
 
 // Parse Google's gviz JSON wrapper
