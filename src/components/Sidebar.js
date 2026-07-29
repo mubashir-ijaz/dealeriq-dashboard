@@ -2,7 +2,7 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
-import { LayoutDashboard, BarChart2, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut } from 'lucide-react';
+import { LayoutDashboard, BarChart2, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut, Trophy } from 'lucide-react';
 
 const NAV = [
   { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview'         },
@@ -10,6 +10,7 @@ const NAV = [
   { id:'charts',     icon:<BarChart2 size={15}/>,       label:'Charts & Trends'  },
   { id:'crossmatch', icon:<GitMerge size={15}/>,        label:'Cross-Match VINs' },
   { id:'titles',     icon:<FileCheck size={15}/>,       label:'Title Status'     },
+  { id:'backlots',   icon:<Trophy size={15}/>,          label:"Today's Opportunities" },
   { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant'     },
 ];
 

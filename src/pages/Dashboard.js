@@ -11,7 +11,8 @@ import ChatBot from '../components/ChatBot';
 import TitleStatus from '../components/TitleStatus';
 import DateFilter from '../components/DateFilter';
 import Activity from '../components/Activity';
-import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare } from 'lucide-react';
+import BacklotsOpportunities from '../components/BacklotsOpportunities';
+import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy } from 'lucide-react';
 
 const PAGE_INFO = {
   overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const PAGE_INFO = {
   charts:     { title: 'Charts & Trends',  subtitle: 'Spend, makes, and purchase volume at a glance',                  icon: BarChart2 },
   crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
   titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
+  backlots:   { title: "Today's Opportunities", subtitle: 'Profitable candidate cars from the backlots auto-scraping pipeline', icon: Trophy },
   chat:       { title: 'AI Assistant',     subtitle: 'Ask questions about your purchase data',                         icon: MessageSquare },
 };
 
@@ -101,6 +103,7 @@ export default function Dashboard({ onLogout }) {
           {page === 'charts'     && <ChartsPage />}
           {page === 'crossmatch' && <CrossMatch />}
           {page === 'titles'     && <TitleStatus />}
+          {page === 'backlots'   && <BacklotsOpportunities />}
           {page === 'chat'       && <ChatBot />}
           {page === 'sheet'      && <SheetView label={active} />}
         </div>
