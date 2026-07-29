@@ -173,6 +173,8 @@ function normalizeOpenlane(r) {
     pickupInstructions: str(r['Pickup Instructions']),
     lineItems: items,
     announcements: '',
+    image:     str(r['Image URL']),
+    detailUrl: str(r['Vehicle Detail URL']),
     _raw: r,
   };
 }
