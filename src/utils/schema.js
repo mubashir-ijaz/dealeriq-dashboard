@@ -65,6 +65,7 @@ function normalizeEdge(r) {
     orderNo:   str(r['Stock #']).replace('.0',''),
     announcements: '',
     invoiceUrl: '',
+    image:     str(r['Image_URL']),
     _raw: r,
   };
 }
@@ -106,6 +107,7 @@ function normalizeCarmax(r, source = 'carmax') {
     payType:   str(r['CM_Pay_Type']),
     titleStatus: normalizeTitleStatus(r['CM_Title']),
     invoiceUrl: '',
+    image:     str(r['Image_URL']),
     _raw: r,
   };
 }
