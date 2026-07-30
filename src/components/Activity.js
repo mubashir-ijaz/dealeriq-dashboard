@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import {
   Calendar, DollarSign, Car, TrendingUp, ChevronDown, ChevronUp,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  ArrowUpDown, ArrowUp, ArrowDown, ImageOff,
 } from 'lucide-react';
 
 const fmt   = n => '$' + Math.round(n||0).toLocaleString();
@@ -153,6 +153,7 @@ function SourceSection({ sheet, rows }) {
   }, [rows, sortKey, sortDir]);
 
   const visible = expanded ? sorted : sorted.slice(0, PREVIEW_COUNT);
+  const hasImages = rows.some(r => r.image);
 
   const toggleSort = key => {
     if (sortKey === key) {
@@ -213,6 +214,7 @@ function SourceSection({ sheet, rows }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+              {hasImages && <Th>Photo</Th>}
               <Th onClick={() => toggleSort('date')}>Date <SortIcon k="date" /></Th>
               <Th onClick={() => toggleSort('vin')}>VIN <SortIcon k="vin" /></Th>
               <Th onClick={() => toggleSort('year')}>Year <SortIcon k="year" /></Th>
@@ -229,6 +231,14 @@ function SourceSection({ sheet, rows }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
+                {hasImages && (
+                  <Td>
+                    {r.image
+                      ? <img src={r.image} alt="" style={{ width:44, height:32, objectFit:'cover', borderRadius:5, display:'block' }} />
+                      : <div style={{ width:44, height:32, borderRadius:5, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={13} color="var(--text3)" /></div>
+                    }
+                  </Td>
+                )}
                 <Td>{fmtDate(r.date)}</Td>
                 <Td mono>{r.vin}</Td>
                 <Td>{r.year}</Td>

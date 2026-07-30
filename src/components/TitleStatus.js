@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
-import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp, ImageOff } from 'lucide-react';
 
 // Config: which sources have title data and what their statuses mean
 const TITLE_CONFIG = {
@@ -61,6 +61,8 @@ function SourceTitleCard({ sheetLabel, source }) {
       </div>
     );
   }
+
+  const hasImages = rows.some(r => r.image);
 
   // Group rows by title status
   const groups = {};
@@ -143,6 +145,7 @@ function SourceTitleCard({ sheetLabel, source }) {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12, marginTop:8 }}>
                   <thead>
                     <tr>
+                      {hasImages && <th style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>Photo</th>}
                       {['VIN','Year','Make','Model','Color','Miles','Date','Seller'].map(h => (
                         <th key={h} style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>{h}</th>
                       ))}
@@ -152,6 +155,14 @@ function SourceTitleCard({ sheetLabel, source }) {
                   <tbody>
                     {groupRows.map((r, i) => (
                       <tr key={i} style={{ borderBottom:`1px solid ${style?.border||'var(--border)'}33` }}>
+                        {hasImages && (
+                          <td style={{ padding:'5px 8px' }}>
+                            {r.image
+                              ? <img src={r.image} alt="" style={{ width:44, height:32, objectFit:'cover', borderRadius:5, display:'block' }} />
+                              : <div style={{ width:44, height:32, borderRadius:5, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={13} color="var(--text3)" /></div>
+                            }
+                          </td>
+                        )}
                         <td style={{ padding:'7px 8px', fontFamily:'var(--mono)', fontSize:11, color:style?.color||'var(--text)', fontWeight:600 }}>{r.vin || '—'}</td>
                         <td style={{ padding:'7px 8px', fontFamily:'var(--mono)' }}>{r.year}</td>
                         <td style={{ padding:'7px 8px', fontWeight:600 }}>{r.make}</td>
