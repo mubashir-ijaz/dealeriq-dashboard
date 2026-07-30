@@ -214,7 +214,9 @@ function SourceSection({ sheet, rows }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
-              {hasImages && <Th>Photo</Th>}
+              {hasImages && (
+                <th style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text2)', whiteSpace: 'nowrap', borderRight: '1px solid var(--border)' }}>Photo</th>
+              )}
               <Th onClick={() => toggleSort('date')}>Date <SortIcon k="date" /></Th>
               <Th onClick={() => toggleSort('vin')}>VIN <SortIcon k="vin" /></Th>
               <Th onClick={() => toggleSort('year')}>Year <SortIcon k="year" /></Th>
@@ -232,12 +234,12 @@ function SourceSection({ sheet, rows }) {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 {hasImages && (
-                  <Td>
+                  <td style={{ padding: '9px 12px', borderRight: '1px solid var(--border)' }}>
                     {r.image
-                      ? <img src={r.image} alt="" style={{ width:44, height:32, objectFit:'cover', borderRadius:5, display:'block' }} />
-                      : <div style={{ width:44, height:32, borderRadius:5, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={13} color="var(--text3)" /></div>
+                      ? <img src={r.image} alt="" style={{ width:88, height:64, objectFit:'cover', borderRadius:7, display:'block', boxShadow:'var(--shadow-sm)' }} />
+                      : <div style={{ width:88, height:64, borderRadius:7, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={18} color="var(--text3)" /></div>
                     }
-                  </Td>
+                  </td>
                 )}
                 <Td>{fmtDate(r.date)}</Td>
                 <Td mono>{r.vin}</Td>

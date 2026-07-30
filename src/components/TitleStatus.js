@@ -50,14 +50,21 @@ function SourceTitleCard({ sheetLabel, source }) {
   const meta = SOURCE_META[source];
 
   if (!cfg) {
+    const open = !!expanded.__self;
     return (
-      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-          <div style={{ width:9, height:9, borderRadius:'50%', background:meta.color }}/>
-          <span style={{ fontWeight:800 }}>{sheetLabel}</span>
+      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, overflow:'hidden' }}>
+        <button onClick={() => setExpanded(e => ({ ...e, __self: !e.__self }))}
+          style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'10px 16px', background:'transparent', border:'none', cursor:'pointer', color:'var(--text)', fontFamily:'var(--font)' }}>
+          <div style={{ width:9, height:9, borderRadius:'50%', background:meta.color, flexShrink:0 }}/>
+          <span style={{ fontWeight:800, fontSize:13 }}>{sheetLabel}</span>
           <span style={{ fontSize:11, color:'var(--text3)', marginLeft:'auto' }}>No title tracking</span>
-        </div>
-        <p style={{ fontSize:13, color:'var(--text3)' }}>This source does not include title status data.</p>
+          {open ? <ChevronUp size={14} color="var(--text3)"/> : <ChevronDown size={14} color="var(--text3)"/>}
+        </button>
+        {open && (
+          <p style={{ fontSize:13, color:'var(--text3)', padding:'0 16px 14px', margin:0 }}>
+            This source does not include title status data.
+          </p>
+        )}
       </div>
     );
   }
@@ -145,7 +152,7 @@ function SourceTitleCard({ sheetLabel, source }) {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12, marginTop:8 }}>
                   <thead>
                     <tr>
-                      {hasImages && <th style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>Photo</th>}
+                      {hasImages && <th style={{ padding:'6px 10px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}`, borderRight:`1px solid ${style?.border||'var(--border)'}` }}>Photo</th>}
                       {['VIN','Year','Make','Model','Color','Miles','Date','Seller'].map(h => (
                         <th key={h} style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>{h}</th>
                       ))}
@@ -156,10 +163,10 @@ function SourceTitleCard({ sheetLabel, source }) {
                     {groupRows.map((r, i) => (
                       <tr key={i} style={{ borderBottom:`1px solid ${style?.border||'var(--border)'}33` }}>
                         {hasImages && (
-                          <td style={{ padding:'5px 8px' }}>
+                          <td style={{ padding:'8px 10px', borderRight:`1px solid ${style?.border||'var(--border)'}` }}>
                             {r.image
-                              ? <img src={r.image} alt="" style={{ width:44, height:32, objectFit:'cover', borderRadius:5, display:'block' }} />
-                              : <div style={{ width:44, height:32, borderRadius:5, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={13} color="var(--text3)" /></div>
+                              ? <img src={r.image} alt="" style={{ width:88, height:64, objectFit:'cover', borderRadius:7, display:'block', boxShadow:'var(--shadow-sm)' }} />
+                              : <div style={{ width:88, height:64, borderRadius:7, background:'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center' }}><ImageOff size={18} color="var(--text3)" /></div>
                             }
                           </td>
                         )}
@@ -226,9 +233,16 @@ export default function TitleStatus() {
         <strong style={{ color:'var(--accent)' }}>Title tracking</strong> is available for <strong>ADESA</strong> and <strong>CarMax</strong> only. Edge Pipeline and OpenLane do not include title status in their data. Click any status row to expand and see individual vehicles.
       </div>
 
-      {/* Per-source cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
-        {sheets.map(sheet => (
+      {/* Sources with title data — one full-width card per row */}
+      <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+        {sheets.filter(s => TITLE_CONFIG[s.source]).map(sheet => (
+          <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} />
+        ))}
+      </div>
+
+      {/* Sources with no title data — compact, collapsed by default */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {sheets.filter(s => !TITLE_CONFIG[s.source]).map(sheet => (
           <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} />
         ))}
       </div>
