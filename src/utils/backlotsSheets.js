@@ -86,5 +86,21 @@ function normalizeCar(r, bucket) {
 
 export async function fetchBacklotsCars() {
   const results = await Promise.all(TABS.map(fetchTab));
-  return results.flat();
+  const all = results.flat();
+
+  // The pipeline's own merges can occasionally leave the same VIN more
+  // than once in a tab (or in both tabs) — collapse to one row per VIN
+  // here so the dashboard never shows a car twice.
+  const seen = new Map();
+  for (const car of all) {
+    const vin = String(car.vin || '').trim().toUpperCase();
+    if (!vin) continue;
+    const existing = seen.get(vin);
+    // If a VIN somehow appears in both buckets, prefer the more
+    // cautious "minor" classification over "clean".
+    if (!existing || (existing.bucket === 'clean' && car.bucket === 'minor')) {
+      seen.set(vin, car);
+    }
+  }
+  return Array.from(seen.values());
 }
