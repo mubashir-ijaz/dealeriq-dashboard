@@ -12,6 +12,14 @@ import {
 const PAGE_SIZE = 50;
 const GALLERY_PAGE_SIZE = 24;
 
+const LISTED_FILTERS = [
+  { id: 'all', label: 'Any time', days: null },
+  { id: '1d',  label: 'Today',    days: 1 },
+  { id: '3d',  label: '3 Days',   days: 3 },
+  { id: '7d',  label: '7 Days',   days: 7 },
+  { id: '30d', label: '30 Days',  days: 30 },
+];
+
 export default function BacklotsOpportunities() {
   const [cars, setCars]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +33,9 @@ export default function BacklotsOpportunities() {
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage]       = useState(0);
   const [selected, setSelected] = useState(null);
+  const [listedFilter, setListedFilter] = useState('all');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -51,6 +62,15 @@ export default function BacklotsOpportunities() {
         [c.title, c.vin, c.damageNotes].some(v => String(v || '').toLowerCase().includes(q))
       );
     }
+    const listedDays = LISTED_FILTERS.find(f => f.id === listedFilter)?.days;
+    if (listedDays) {
+      const cutoff = Date.now() - listedDays * 86400000;
+      rows = rows.filter(c => c.dateListed && c.dateListed >= cutoff);
+    }
+    const min = priceMin !== '' ? Number(priceMin) : null;
+    const max = priceMax !== '' ? Number(priceMax) : null;
+    if (min !== null) rows = rows.filter(c => (c.price || 0) >= min);
+    if (max !== null) rows = rows.filter(c => (c.price || 0) <= max);
     rows = [...rows].sort((a, b) => {
       const av = a[sortCol] ?? 0, bv = b[sortCol] ?? 0;
       const cmp = typeof av === 'number' && typeof bv === 'number'
@@ -59,7 +79,7 @@ export default function BacklotsOpportunities() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return rows;
-  }, [cars, bucket, search, sortCol, sortDir]);
+  }, [cars, bucket, search, sortCol, sortDir, listedFilter, priceMin, priceMax]);
 
   const pageSize = view === 'gallery' ? GALLERY_PAGE_SIZE : PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -171,6 +191,39 @@ export default function BacklotsOpportunities() {
         <div style={{ fontSize:12, color:'var(--text3)', fontFamily:'var(--mono)', whiteSpace:'nowrap' }}>
           {filtered.length.toLocaleString()} cars
         </div>
+      </div>
+
+      {/* Listed-date + price filters */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:9, padding:3 }}>
+          {LISTED_FILTERS.map(f => (
+            <button key={f.id} onClick={() => { setListedFilter(f.id); setPage(0); }}
+              style={{ padding:'6px 12px', borderRadius:7, border:'none', cursor:'pointer', fontSize:12, fontFamily:'var(--font)',
+                fontWeight: listedFilter===f.id ? 700 : 500,
+                background: listedFilter===f.id ? 'var(--accent)' : 'transparent',
+                color: listedFilter===f.id ? '#fff' : 'var(--text2)' }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontSize:11, color:'var(--text3)', fontWeight:600 }}>Price</span>
+          <input type="number" placeholder="Min" value={priceMin}
+            onChange={e => { setPriceMin(e.target.value); setPage(0); }}
+            style={{ width:80, padding:'7px 10px', background:'var(--bg2)', border:'1px solid var(--border2)', borderRadius:8, color:'var(--text)', fontSize:12, fontFamily:'var(--mono)', outline:'none' }} />
+          <span style={{ color:'var(--text3)' }}>–</span>
+          <input type="number" placeholder="Max" value={priceMax}
+            onChange={e => { setPriceMax(e.target.value); setPage(0); }}
+            style={{ width:80, padding:'7px 10px', background:'var(--bg2)', border:'1px solid var(--border2)', borderRadius:8, color:'var(--text)', fontSize:12, fontFamily:'var(--mono)', outline:'none' }} />
+        </div>
+
+        {(listedFilter !== 'all' || priceMin !== '' || priceMax !== '') && (
+          <button onClick={() => { setListedFilter('all'); setPriceMin(''); setPriceMax(''); setPage(0); }}
+            style={{ padding:'6px 12px', borderRadius:7, border:'1px solid var(--border2)', background:'transparent', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            Clear filters
+          </button>
+        )}
       </div>
 
       {view === 'gallery' ? (
