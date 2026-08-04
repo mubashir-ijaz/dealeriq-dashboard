@@ -130,6 +130,18 @@ export default function BacklotsOpportunities() {
           ))}
         </div>
 
+        <div style={{ display:'flex', alignItems:'center', gap:6, background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:9, padding:3 }}>
+          {[['profit','Profit'],['dateListed','Recently Added']].map(([col,label]) => (
+            <button key={col} onClick={() => { setSortCol(col); setSortDir('desc'); setPage(0); }}
+              style={{ padding:'6px 12px', borderRadius:7, border:'none', cursor:'pointer', fontSize:12, fontFamily:'var(--font)',
+                fontWeight: sortCol===col ? 700 : 500,
+                background: sortCol===col ? 'var(--accent)' : 'transparent',
+                color: sortCol===col ? '#fff' : 'var(--text2)' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ position:'relative', flex:1, minWidth:200 }}>
           <Search size={13} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text3)' }} />
           <input
@@ -239,6 +251,12 @@ function GalleryGrid({ cars, onSelect }) {
                 )}
               </div>
 
+              {car.dateListed && (
+                <div style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)' }}>
+                  Listed {daysAgo(car.dateListed)}
+                </div>
+              )}
+
               <div style={{ fontSize:11, color:'var(--text2)', lineHeight:1.5, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }} title={car.damageNotes}>
                 {car.damageNotes}
               </div>
@@ -259,7 +277,8 @@ function TableView({ cars, sortCol, sortDir, onSort, onSelect }) {
             <tr>
               {[
                 ['title','Car'], ['price','Price'], ['mmr','MMR'], ['jdProfit','JD Profit'],
-                ['profit','Profit'], ['mileage','Miles'], ['carfax','Carfax'], ['damageNotes','Damage'],
+                ['profit','Profit'], ['mileage','Miles'], ['carfax','Carfax'],
+                ['dateListed','Listed'], ['damageNotes','Damage'],
               ].map(([col,label]) => (
                 <th key={col} onClick={() => onSort(col)}
                   style={{ padding:'10px 12px', textAlign:'left', fontSize:10, fontWeight:700, letterSpacing:'0.8px', textTransform:'uppercase', color: sortCol===col?'var(--accent)':'var(--text3)', background:'var(--bg2)', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap', cursor:'pointer', userSelect:'none', position:'sticky', top:0 }}>
@@ -289,6 +308,9 @@ function TableView({ cars, sortCol, sortDir, onSort, onSelect }) {
                   <td style={{ padding:'8px 12px' }}>
                     <CarfaxBadge text={car.carfax} />
                   </td>
+                  <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--text2)', whiteSpace:'nowrap' }}>
+                    {car.dateListed ? daysAgo(car.dateListed) : '—'}
+                  </td>
                   <td style={{ padding:'8px 12px', maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isClean ? 'var(--green)' : 'var(--text2)' }} title={car.damageNotes}>
                     {isClean && <ShieldCheck size={11} style={{ verticalAlign:'-2px', marginRight:4 }} />}
                     {car.damageNotes}
@@ -297,7 +319,7 @@ function TableView({ cars, sortCol, sortDir, onSort, onSelect }) {
               );
             })}
             {cars.length === 0 && (
-              <tr><td colSpan={8} style={{ padding:'40px 20px', textAlign:'center', color:'var(--text3)' }}>No cars match</td></tr>
+              <tr><td colSpan={9} style={{ padding:'40px 20px', textAlign:'center', color:'var(--text3)' }}>No cars match</td></tr>
             )}
           </tbody>
         </table>
@@ -332,6 +354,13 @@ function fmt$(n) {
   return '$' + Math.round(n).toLocaleString();
 }
 
+function daysAgo(ms) {
+  const days = Math.floor((Date.now() - ms) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1d ago';
+  return `${days}d ago`;
+}
+
 function CarDetailModal({ car, onClose }) {
   const isClean = car.bucket === 'clean';
   return (
@@ -362,6 +391,7 @@ function CarDetailModal({ car, onClose }) {
             <Field label="Mileage" value={car.mileage ? car.mileage.toLocaleString() : '—'} />
             <Field label="VIN" value={car.vin} mono />
             <Field label="Carfax Accidents" value={car.carfaxAccidents} />
+            <Field label="Listed" value={car.dateListed ? daysAgo(car.dateListed) : '—'} />
           </div>
 
           <div>

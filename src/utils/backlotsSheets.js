@@ -52,6 +52,15 @@ function toNum(v) {
   return isNaN(n) ? null : n;
 }
 
+function toDateMs(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const gm = s.match(/Date\((\d+),(\d+),(\d+)\)/); // Google's Date(yyyy,m,d) format
+  if (gm) return new Date(Number(gm[1]), Number(gm[2]), Number(gm[3])).getTime();
+  const t = new Date(s).getTime();
+  return isNaN(t) ? null : t;
+}
+
 function normalizeCar(r, bucket) {
   return {
     bucket,
@@ -69,6 +78,7 @@ function normalizeCar(r, bucket) {
     jdProfit:    toNum(r.jd_profit),
     profit:      toNum(r.profit),
     damageNotes: r.damage_notes,
+    dateListed:  toDateMs(r.date_listed),
     image:       r.image,
     url:         r.url,
   };
