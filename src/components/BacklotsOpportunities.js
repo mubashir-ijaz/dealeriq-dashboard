@@ -29,7 +29,7 @@ export default function BacklotsOpportunities() {
   const [bucket, setBucket]   = useState('all'); // all | clean | minor
   const [view, setView]       = useState('gallery'); // gallery | table
   const [search, setSearch]   = useState('');
-  const [sortCol, setSortCol] = useState('profit');
+  const [sortCol, setSortCol] = useState('dateListed');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage]       = useState(0);
   const [selected, setSelected] = useState(null);

@@ -7,8 +7,8 @@
 
 const SHEET_ID = '1S8ulo9ifGNOUryW1CAtroDiGHkjU3Ywo-oBLS6DZqPc';
 const TABS = [
-  { tab: 'Clean',        bucket: 'clean' },
-  { tab: 'Minor Damage', bucket: 'minor' },
+  { tab: 'Clean',  bucket: 'clean' },
+  { tab: 'Damage', bucket: 'minor' },
 ];
 
 function parseGviz(raw) {
