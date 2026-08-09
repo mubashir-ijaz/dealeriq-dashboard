@@ -9,10 +9,11 @@ import CrossMatch from '../components/CrossMatch';
 import ChartsPage from '../components/ChartsPage';
 import ChatBot from '../components/ChatBot';
 import TitleStatus from '../components/TitleStatus';
+import CarMaxTab from '../components/CarMaxTab';
 import DateFilter from '../components/DateFilter';
 import Activity from '../components/Activity';
 import BacklotsOpportunities from '../components/BacklotsOpportunities';
-import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy } from 'lucide-react';
+import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy, Car } from 'lucide-react';
 
 const PAGE_INFO = {
   overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
@@ -20,6 +21,7 @@ const PAGE_INFO = {
   charts:     { title: 'Charts & Trends',  subtitle: 'Spend, makes, and purchase volume at a glance',                  icon: BarChart2 },
   crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
   titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
+  carmax:     { title: 'CarMax',           subtitle: 'Browse all CarMax purchases, filter to title-issue cars, and export to Excel', icon: Car },
   backlots:   { title: "Today's Opportunities", subtitle: 'Profitable candidate cars from the backlots auto-scraping pipeline', icon: Trophy },
   chat:       { title: 'AI Assistant',     subtitle: 'Ask questions about your purchase data',                         icon: MessageSquare },
 };
@@ -57,7 +59,7 @@ export default function Dashboard({ onLogout }) {
   const subtitle = page === 'sheet' ? `Raw ${active} data, browsable and searchable` : info?.subtitle;
   const TitleIcon = info?.icon;
   const nav   = (p, sh) => { setPage(p); if (sh !== undefined) setActive(sh); };
-  const showDateFilter = ['overview','activity','charts','crossmatch','titles'].includes(page);
+  const showDateFilter = ['overview','activity','charts','crossmatch','titles','carmax'].includes(page);
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
@@ -103,9 +105,10 @@ export default function Dashboard({ onLogout }) {
           {page === 'charts'     && <ChartsPage />}
           {page === 'crossmatch' && <CrossMatch />}
           {page === 'titles'     && <TitleStatus />}
+          {page === 'carmax'     && <CarMaxTab />}
           {page === 'backlots'   && <BacklotsOpportunities />}
           {page === 'chat'       && <ChatBot />}
-          {page === 'sheet'      && <SheetView label={active} />}
+          {page === 'sheet'      && <SheetView key={active} label={active} />}
         </div>
       </div>
     </div>

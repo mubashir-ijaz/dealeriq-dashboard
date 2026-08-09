@@ -1,10 +1,27 @@
 // src/components/SheetView.js
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { SOURCE_META } from '../utils/schema';
-import { Search, ChevronUp, ChevronDown, ExternalLink, LayoutGrid, List, ImageOff } from 'lucide-react';
+import { SOURCE_META, parseDate } from '../utils/schema';
+import { exportRowsToExcel } from '../utils/exportExcel';
+import CarDetailModal from './CarDetailModal';
+import { Search, ChevronUp, ChevronDown, ExternalLink, LayoutGrid, List, ImageOff, Download, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 
 const PAGE_SIZE = 50;
+
+// Which raw column holds title status, per source (only sources that track it)
+const TITLE_RAW_COLUMN = { carmax: 'CM_Title', valuemyvehicle: 'CM_Title', adesa: 'Title' };
+
+const STATUS_COLOR = {
+  Available: '#10b981', Released: '#10b981', Received: '#3b82f6',
+  Unavailable: '#ef4444', 'Not Received': '#ef4444',
+  Unknown: '#f59e0b', Ineligible: '#f59e0b',
+};
+function statusColor(v) { return STATUS_COLOR[v] || 'var(--text3)'; }
+function statusIcon(v) {
+  if (v === 'Available' || v === 'Released' || v === 'Received') return <CheckCircle size={12} />;
+  if (v === 'Unavailable' || v === 'Not Received') return <AlertTriangle size={12} />;
+  return <HelpCircle size={12} />;
+}
 
 export default function SheetView({ label }) {
   const { sheets, stats } = useData();
@@ -13,34 +30,64 @@ export default function SheetView({ label }) {
   const meta   = SOURCE_META[sheet?.source] || {};
   const rawRows = useMemo(() => sheet?.rows || [], [sheet]);
 
-  const [search,  setSearch]  = useState('');
-  const [sortCol, setSortCol] = useState(null);
-  const [sortDir, setSortDir] = useState('asc');
-  const [page,    setPage]    = useState(0);
-  const [view,    setView]    = useState('table'); // table | gallery
-
   // Use raw column headers for display
   const columns = rawRows.length ? Object.keys(rawRows[0]) : [];
   const hasImageCol = columns.some(c => /image/i.test(c));
+  const titleCol = TITLE_RAW_COLUMN[sheet?.source] && columns.includes(TITLE_RAW_COLUMN[sheet.source])
+    ? TITLE_RAW_COLUMN[sheet.source] : null;
+  const dateCol = findDateColumn(columns);
+
+  const [search,  setSearch]  = useState('');
+  const [sortCol, setSortCol] = useState(() => dateCol);
+  const [sortDir, setSortDir] = useState('desc');
+  const [page,    setPage]    = useState(0);
+  const [view,    setView]    = useState('table'); // table | gallery
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [modalIndex, setModalIndex] = useState(null);
+
+  // Distinct title-status values present in this sheet, with counts — order:
+  // Available/Released/Received first, then Unavailable/Not Received, then
+  // Unknown, then anything else encountered.
+  const statusTabs = useMemo(() => {
+    if (!titleCol) return [];
+    const counts = {};
+    rawRows.forEach(r => {
+      const v = String(r[titleCol] || '').trim() || 'Unknown';
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    const priority = ['Available', 'Released', 'Received', 'Unavailable', 'Not Received', 'Unknown'];
+    const keys = [...priority.filter(k => counts[k]), ...Object.keys(counts).filter(k => !priority.includes(k))];
+    return keys.map(k => ({ value: k, count: counts[k] }));
+  }, [rawRows, titleCol]);
 
   const filtered = useMemo(() => {
     let rows = rawRows;
+    if (titleCol && statusFilter !== 'all') {
+      rows = rows.filter(r => (String(r[titleCol] || '').trim() || 'Unknown') === statusFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)));
     }
     if (sortCol) {
+      const isDate = sortCol === dateCol;
       rows = [...rows].sort((a, b) => {
         const av = a[sortCol] ?? '';
         const bv = b[sortCol] ?? '';
-        const an = parseFloat(String(av).replace(/[$,]/g, ''));
-        const bn = parseFloat(String(bv).replace(/[$,]/g, ''));
-        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        let cmp;
+        if (isDate) {
+          const ad = parseDate(av), bd = parseDate(bv);
+          cmp = (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+        } else {
+          const an = parseFloat(String(av).replace(/[$,]/g, ''));
+          const bn = parseFloat(String(bv).replace(/[$,]/g, ''));
+          cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        }
         return sortDir === 'asc' ? cmp : -cmp;
       });
     }
     return rows;
-  }, [rawRows, search, sortCol, sortDir]);
+  }, [rawRows, titleCol, statusFilter, search, sortCol, sortDir, dateCol]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged      = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -49,6 +96,12 @@ export default function SheetView({ label }) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('asc'); }
     setPage(0);
+  };
+
+  const handleExport = () => {
+    const exportCols = columns.filter(c => !/image/i.test(c)).map(c => ({ key: c, header: c }));
+    const name = `${label.replace(/\s+/g, '_')}${statusFilter !== 'all' ? '_' + statusFilter.replace(/\s+/g, '_') : ''}`;
+    exportRowsToExcel(filtered, exportCols, name);
   };
 
   return (
@@ -72,9 +125,33 @@ export default function SheetView({ label }) {
         </div>
       )}
 
+      {/* Title status tabs — Available / Unavailable / Unknown / … at the top */}
+      {statusTabs.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <StatusTab
+            active={statusFilter === 'all'}
+            color="var(--text)"
+            label="All"
+            count={rawRows.length}
+            onClick={() => { setStatusFilter('all'); setPage(0); }}
+          />
+          {statusTabs.map(({ value, count }) => (
+            <StatusTab
+              key={value}
+              active={statusFilter === value}
+              color={statusColor(value)}
+              icon={statusIcon(value)}
+              label={value}
+              count={count}
+              onClick={() => { setStatusFilter(value); setPage(0); }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Search + count */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ position: 'relative', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
           <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
           <input
             value={search}
@@ -85,6 +162,10 @@ export default function SheetView({ label }) {
             onBlur={e  => e.target.style.borderColor = 'var(--border2)'}
           />
         </div>
+        <button onClick={handleExport} disabled={filtered.length === 0}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, background: 'rgba(16,185,129,0.1)', color: '#059669', fontSize: 12.5, fontWeight: 700, cursor: filtered.length ? 'pointer' : 'default', opacity: filtered.length ? 1 : 0.5, whiteSpace: 'nowrap' }}>
+          <Download size={13} /> Excel
+        </button>
         {hasImageCol && (
           <div style={{ display: 'flex', gap: 4, background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, padding: 3 }}>
             <button onClick={() => setView('gallery')} title="Image preview"
@@ -104,7 +185,7 @@ export default function SheetView({ label }) {
       </div>
 
       {view === 'gallery' && hasImageCol ? (
-        <GalleryGrid rows={paged} columns={columns} meta={meta} />
+        <GalleryGrid rows={paged} pageOffset={page * PAGE_SIZE} columns={columns} meta={meta} source={sheet?.source} onOpen={setModalIndex} />
       ) : (
       /* Table */
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
@@ -190,7 +271,49 @@ export default function SheetView({ label }) {
           </div>
         </div>
       )}
+
+      {/* Detail popup — click a gallery card to see full details + Prev/Next */}
+      {modalIndex !== null && filtered[modalIndex] && (() => {
+        const row  = filtered[modalIndex];
+        const card = galleryCard(row, columns);
+        return (
+          <CarDetailModal
+            open
+            onClose={() => setModalIndex(null)}
+            onPrev={() => setModalIndex(i => Math.max(0, i - 1))}
+            onNext={() => setModalIndex(i => Math.min(filtered.length - 1, i + 1))}
+            hasPrev={modalIndex > 0}
+            hasNext={modalIndex < filtered.length - 1}
+            image={card.image}
+            title={card.title || label}
+            subtitle={card.vin}
+            badge={titleCol && row[titleCol] ? <StatusBadgeSmall status={row[titleCol]} /> : null}
+            fields={buildDetailFields(row, columns)}
+            link={card.link}
+            accentColor={meta.color}
+          />
+        );
+      })()}
     </div>
+  );
+}
+
+function StatusTab({ active, color, icon, label, count, onClick }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 20, border: `1px solid ${active ? color : 'var(--border2)'}`, background: active ? `${color}18` : 'var(--bg2)', color: active ? color : 'var(--text2)', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+      {icon}{label}
+      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, opacity: 0.8 }}>{count}</span>
+    </button>
+  );
+}
+
+function StatusBadgeSmall({ status }) {
+  const c = statusColor(status);
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, background: 'var(--bg2)', border: `1px solid ${c}`, color: c, fontSize: 11, fontWeight: 700 }}>
+      {statusIcon(status)} {status}
+    </span>
   );
 }
 
@@ -203,6 +326,29 @@ function pickCol(columns, patterns, exclude) {
     if (found) return found;
   }
   return null;
+}
+
+// Best-guess date column for default "newest first" sort — tries the common
+// purchase/sale/invoice date names first, falls back to any column with
+// "date" or "purchased" in its name.
+function findDateColumn(columns) {
+  return pickCol(columns, [/sale date|purchase date|invoice date/i, /date|purchased/i]);
+}
+
+// Build the [label, value]s shown in the detail popup — reuses the same
+// money/url formatting as the table, skips the image column (shown big
+// above) and URL columns (surfaced separately as the "Open Original" link).
+function buildDetailFields(row, columns) {
+  return columns
+    .filter(c => !/image/i.test(c))
+    .map(c => {
+      const val = row[c] ?? '';
+      if (String(val).startsWith('http')) return [c, null];
+      const isMoney = /price|cost|total|spend|fee|amount/i.test(c) && !isNaN(parseFloat(String(val).replace(/[$,]/g, '')));
+      const display = isMoney ? '$' + parseFloat(String(val).replace(/[$,]/g, '')).toLocaleString() : val;
+      return [c, display];
+    })
+    .filter(([, v]) => v !== null && v !== '');
 }
 
 function galleryCard(row, columns) {
@@ -226,7 +372,8 @@ function galleryCard(row, columns) {
   };
 }
 
-function GalleryGrid({ rows, columns, meta }) {
+function GalleryGrid({ rows, columns, meta, source, pageOffset = 0, onOpen }) {
+  const titleCol = TITLE_RAW_COLUMN[source] && columns.includes(TITLE_RAW_COLUMN[source]) ? TITLE_RAW_COLUMN[source] : null;
   if (rows.length === 0) {
     return <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text3)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12 }}>No results</div>;
   }
@@ -235,15 +382,21 @@ function GalleryGrid({ rows, columns, meta }) {
       {rows.map((row, i) => {
         const c = galleryCard(row, columns);
         const priceNum = parseFloat(String(c.price).replace(/[$,]/g, ''));
+        const status = titleCol ? row[titleCol] : null;
         return (
-          <div key={(c.vin || i) + '-' + i}
-            style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `2px solid ${meta.color}`, borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}
+          <div key={(c.vin || i) + '-' + i} onClick={() => onOpen && onOpen(pageOffset + i)}
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: `2px solid ${meta.color}`, borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', cursor: onOpen ? 'pointer' : 'default' }}
           >
             <div style={{ width: '100%', height: 150, background: 'var(--bg3)', position: 'relative' }}>
               {c.image
                 ? <img src={c.image} alt={c.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}><ImageOff size={28} /></div>
               }
+              {status && (
+                <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                  <StatusBadgeSmall status={status} />
+                </div>
+              )}
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.title}>{c.title || '—'}</div>
