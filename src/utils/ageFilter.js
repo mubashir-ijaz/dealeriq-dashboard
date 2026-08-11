@@ -7,6 +7,7 @@
 export const AGE_FILTERS = [
   { id: 'all',  label: 'Any Age',    min: 0   },
   { id: '7d',   label: '1 Week+',    min: 7   },
+  { id: '10d',  label: '10 Days+',   min: 10  },
   { id: '14d',  label: '2 Weeks+',   min: 14  },
   { id: '30d',  label: '1 Month+',   min: 30  },
   { id: '60d',  label: '2 Months+',  min: 60  },
