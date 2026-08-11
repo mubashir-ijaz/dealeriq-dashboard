@@ -28,7 +28,9 @@ const SHEETS = [
     source:'adesa',
   },
   {
-    id:    '1flfLQ1VEFDxjN6yPkn5XvQWvU7UkFEgh_qkxxbtOZ5M',
+    // Moved to its own spreadsheet 2026-08-11 — no longer shares the CarMax
+    // spreadsheet, just a tab name coincidence with it before.
+    id:    '1IYS5CHmGyWX9Ag2QeYSmKgCZ-V-vk23GH3YFcgAaBoA',
     tab:   'ValueMyVehicle',
     label: 'Value My Vehicle',
     source:'valuemyvehicle',

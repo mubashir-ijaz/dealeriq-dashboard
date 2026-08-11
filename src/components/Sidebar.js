@@ -11,6 +11,7 @@ const NAV = [
   { id:'crossmatch', icon:<GitMerge size={15}/>,        label:'Cross-Match VINs' },
   { id:'titles',     icon:<FileCheck size={15}/>,       label:'Title Status'     },
   { id:'carmax',     icon:<Car size={15}/>,             label:'CarMax'           },
+  { id:'vmv',        icon:<Car size={15}/>,             label:'Value My Vehicle' },
   { id:'backlots',   icon:<Trophy size={15}/>,          label:"Today's Opportunities" },
   { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant'     },
 ];
@@ -27,6 +28,9 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
 
   // Count CarMax title-issue (Unavailable) cars for the CarMax tab badge
   const carmaxTitleIssues = (normalized['CarMax'] || []).filter(r => r.titleStatus === 'Unavailable').length;
+
+  // Same, for the Value My Vehicle tab badge
+  const vmvTitleIssues = (normalized['Value My Vehicle'] || []).filter(r => r.titleStatus === 'Unavailable').length;
 
   return (
     <aside style={{ width:220, minWidth:220, background:'var(--bg2)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', boxShadow:'var(--shadow-sm)', zIndex:2 }}>
@@ -61,6 +65,11 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
             {n.id === 'carmax' && carmaxTitleIssues > 0 && (
               <span style={{ fontSize:10, background:'rgba(239,68,68,0.2)', color:'var(--red)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
                 {carmaxTitleIssues}
+              </span>
+            )}
+            {n.id === 'vmv' && vmvTitleIssues > 0 && (
+              <span style={{ fontSize:10, background:'rgba(239,68,68,0.2)', color:'var(--red)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
+                {vmvTitleIssues}
               </span>
             )}
           </Btn>
