@@ -233,14 +233,38 @@ function normalizeAdesa(r) {
 }
 
 export function normalizeRow(row, source) {
+  let out;
   switch (source) {
-    case 'edge':     return normalizeEdge(row);
-    case 'carmax':   return normalizeCarmax(row);
-    case 'valuemyvehicle': return normalizeCarmax(row, 'valuemyvehicle');
-    case 'openlane': return normalizeOpenlane(row);
-    case 'adesa':    return normalizeAdesa(row);
-    default:         return { source: 'unknown', vin: '', _raw: row };
+    case 'edge':     out = normalizeEdge(row); break;
+    case 'carmax':   out = normalizeCarmax(row); break;
+    case 'valuemyvehicle': out = normalizeCarmax(row, 'valuemyvehicle'); break;
+    case 'openlane': out = normalizeOpenlane(row); break;
+    case 'adesa':    out = normalizeAdesa(row); break;
+    default:         out = { source: 'unknown', vin: '', _raw: row };
   }
+  // Age in days since purchase/sale date — null when the date can't be parsed
+  out.ageDays = daysSince(out.date || out._rawDate);
+  return out;
+}
+
+// Days between a purchase/sale date and today (whole days, 0 = today).
+// Returns null when the date is missing/unparseable so callers can tell
+// "no date on file" apart from "0 days old".
+export function daysSince(dateStr) {
+  const d = parseDate(dateStr);
+  if (!d) return null;
+  const diffMs = new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round(diffMs / 86400000));
+}
+
+// Short human label for an age in days: "3d", "2w", "1.5mo", "1.2y"
+export function formatAge(days) {
+  if (days === null || days === undefined) return '—';
+  if (days < 1) return 'Today';
+  if (days < 14) return `${days}d`;
+  if (days < 60) return `${Math.round(days / 7)}w`;
+  if (days < 365) return `${Math.round(days / 30 * 10) / 10}mo`;
+  return `${Math.round(days / 365 * 10) / 10}y`;
 }
 
 export function normalizeSheet(rows, source) {

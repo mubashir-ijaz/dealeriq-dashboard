@@ -1,7 +1,9 @@
 // src/components/TitleStatus.js
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { SOURCE_META } from '../utils/schema';
+import { SOURCE_META, formatAge } from '../utils/schema';
+import { filterByAge } from '../utils/ageFilter';
+import AgeFilter from './AgeFilter';
 import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp, ImageOff } from 'lucide-react';
 
 // Config: which sources have title data and what their statuses mean
@@ -42,10 +44,10 @@ function StatusBadge({ status }) {
   );
 }
 
-function SourceTitleCard({ sheetLabel, source }) {
+function SourceTitleCard({ sheetLabel, source, ageFilter }) {
   const { normalized } = useData();
   const [expanded, setExpanded] = useState({});
-  const rows = normalized[sheetLabel] || [];
+  const rows = filterByAge(normalized[sheetLabel] || [], ageFilter);
   const cfg  = TITLE_CONFIG[source];
   const meta = SOURCE_META[source];
 
@@ -153,7 +155,7 @@ function SourceTitleCard({ sheetLabel, source }) {
                   <thead>
                     <tr>
                       {hasImages && <th style={{ padding:'6px 10px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}`, borderRight:`1px solid ${style?.border||'var(--border)'}` }}>Photo</th>}
-                      {['VIN','Year','Make','Model','Color','Miles','Date','Seller'].map(h => (
+                      {['VIN','Year','Make','Model','Color','Miles','Date','Age','Seller'].map(h => (
                         <th key={h} style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>{h}</th>
                       ))}
                       {cfg.releaseField && <th style={{ padding:'6px 8px', textAlign:'left', fontSize:9, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--text3)', borderBottom:`1px solid ${style?.border||'var(--border)'}` }}>Release</th>}
@@ -177,6 +179,7 @@ function SourceTitleCard({ sheetLabel, source }) {
                         <td style={{ padding:'7px 8px', color:'var(--text2)' }}>{r.color}</td>
                         <td style={{ padding:'7px 8px', fontFamily:'var(--mono)', color:'var(--text2)' }}>{r.miles ? Number(r.miles).toLocaleString() : '—'}</td>
                         <td style={{ padding:'7px 8px', fontFamily:'var(--mono)', color:'var(--text2)', fontSize:11 }}>{r.date}</td>
+                        <td style={{ padding:'7px 8px', fontFamily:'var(--mono)', color: r.ageDays >= 30 ? '#ef4444' : 'var(--text2)', fontWeight: r.ageDays >= 30 ? 700 : 400, fontSize:11 }}>{formatAge(r.ageDays)}</td>
                         <td style={{ padding:'7px 8px', color:'var(--text2)', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.seller}</td>
                         {cfg.releaseField && <td style={{ padding:'7px 8px' }}><StatusBadge status={r[cfg.releaseField]}/></td>}
                       </tr>
@@ -194,21 +197,27 @@ function SourceTitleCard({ sheetLabel, source }) {
 
 export default function TitleStatus() {
   const { sheets, normalized } = useData();
+  const [ageFilter, setAgeFilter] = useState('all');
 
-  // Grand title summary across all sources with title data
+  // Grand title summary across all sources with title data — respects the
+  // age filter so e.g. "1 Month+" shows only cars bought 30+ days ago.
   const allTitled = ['ADESA','CarMax','Value My Vehicle'];
+  const agedNormalized = {};
+  allTitled.forEach(label => { agedNormalized[label] = filterByAge(normalized[label] || [], ageFilter); });
+
   const grandNeedAction = allTitled.reduce((sum, label) => {
-    const rows = normalized[label] || [];
-    return sum + rows.filter(r => ['Not Received','Unavailable'].includes(r.titleStatus)).length;
+    return sum + agedNormalized[label].filter(r => ['Not Received','Unavailable'].includes(r.titleStatus)).length;
   }, 0);
   const grandReleased = allTitled.reduce((sum, label) => {
-    const rows = normalized[label] || [];
-    return sum + rows.filter(r => ['Released','Available'].includes(r.titleStatus)).length;
+    return sum + agedNormalized[label].filter(r => ['Released','Available'].includes(r.titleStatus)).length;
   }, 0);
-  const grandTotal = allTitled.reduce((sum, label) => sum + (normalized[label]?.length || 0), 0);
+  const grandTotal = allTitled.reduce((sum, label) => sum + agedNormalized[label].length, 0);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      {/* Age filter */}
+      <AgeFilter value={ageFilter} onChange={setAgeFilter} />
+
       {/* Grand summary */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
         <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderTop:'2px solid #059669', borderRadius:12, padding:'16px 20px', boxShadow:'var(--shadow-sm)' }}>
@@ -236,14 +245,14 @@ export default function TitleStatus() {
       {/* Sources with title data — one full-width card per row */}
       <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
         {sheets.filter(s => TITLE_CONFIG[s.source]).map(sheet => (
-          <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} />
+          <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} ageFilter={ageFilter} />
         ))}
       </div>
 
       {/* Sources with no title data — compact, collapsed by default */}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {sheets.filter(s => !TITLE_CONFIG[s.source]).map(sheet => (
-          <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} />
+          <SourceTitleCard key={sheet.label} sheetLabel={sheet.label} source={sheet.source} ageFilter={ageFilter} />
         ))}
       </div>
     </div>

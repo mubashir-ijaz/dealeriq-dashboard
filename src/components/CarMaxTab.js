@@ -4,9 +4,11 @@
 // click a car for full details, and export to Excel.
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { SOURCE_META, parseDate } from '../utils/schema';
+import { SOURCE_META, parseDate, formatAge } from '../utils/schema';
+import { filterByAge } from '../utils/ageFilter';
 import { exportRowsToExcel } from '../utils/exportExcel';
 import CarDetailModal from './CarDetailModal';
+import AgeFilter from './AgeFilter';
 import { Search, ChevronUp, ChevronDown, ImageOff, Download, LayoutGrid, List, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
 
 const PAGE_SIZE = 50;
@@ -27,6 +29,7 @@ const EXPORT_COLUMNS = [
   { key: 'color',       header: 'Color' },
   { key: 'miles',       header: 'Miles' },
   { key: 'date',        header: 'Sale Date' },
+  { key: 'ageDays',     header: 'Age (Days)' },
   { key: 'price',       header: 'Price' },
   { key: 'totalCost',   header: 'Total Cost' },
   { key: 'seller',      header: 'Location' },
@@ -37,13 +40,13 @@ const EXPORT_COLUMNS = [
 
 const TABLE_COLUMNS = [
   ['vin', 'VIN'], ['year', 'Year'], ['make', 'Make'], ['model', 'Model'],
-  ['color', 'Color'], ['miles', 'Miles'], ['date', 'Date'], ['seller', 'Location'],
+  ['color', 'Color'], ['miles', 'Miles'], ['date', 'Date'], ['age', 'Age'], ['seller', 'Location'],
   ['totalCost', 'Total Cost'], ['titleStatus', 'Title Status'],
 ];
 
 const DETAIL_FIELDS = [
   ['vin', 'VIN'], ['year', 'Year'], ['make', 'Make'], ['model', 'Model'], ['color', 'Color'],
-  ['miles', 'Miles'], ['date', 'Sale Date'], ['totalCost', 'Total Cost'], ['price', 'Selling Price'],
+  ['miles', 'Miles'], ['date', 'Sale Date'], ['age', 'Age'], ['totalCost', 'Total Cost'], ['price', 'Selling Price'],
   ['buyFee', 'Buyers Fee'], ['adminFee', 'Admin Fee'], ['seller', 'Location'], ['buyer', 'Purchaser'],
   ['payType', 'Pay Type'], ['titleStatus', 'Title Status'], ['stockNo', 'Stock #'], ['announcements', 'Announcements'],
 ];
@@ -54,6 +57,7 @@ export default function CarMaxTab() {
   const rows = useMemo(() => normalized['CarMax'] || [], [normalized]);
 
   const [statusFilter, setStatusFilter] = useState('Unavailable');
+  const [ageFilter, setAgeFilter] = useState('all');
   const [search,  setSearch]  = useState('');
   const [sortCol, setSortCol] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
@@ -78,6 +82,7 @@ export default function CarMaxTab() {
     let out = statusFilter === 'all'
       ? rows
       : rows.filter(r => (r.titleStatus && r.titleStatus !== '—' ? r.titleStatus : 'Unknown') === statusFilter);
+    out = filterByAge(out, ageFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       out = out.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(q)));
@@ -100,7 +105,7 @@ export default function CarMaxTab() {
       });
     }
     return out;
-  }, [rows, statusFilter, search, sortCol, sortDir]);
+  }, [rows, statusFilter, ageFilter, search, sortCol, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged      = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -144,6 +149,9 @@ export default function CarMaxTab() {
             label={value} count={count} onClick={() => { setStatusFilter(value); setPage(0); }} />
         ))}
       </div>
+
+      {/* Age filter — how long a car has been sitting since it was bought */}
+      <AgeFilter value={ageFilter} onChange={id => { setAgeFilter(id); setPage(0); }} accentColor={meta.color} />
 
       {/* Controls row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -224,6 +232,7 @@ export default function CarMaxTab() {
                     <td style={{ padding: '8px 12px', color: 'var(--text2)' }}>{r.color}</td>
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{r.miles ? Number(r.miles).toLocaleString() : '—'}</td>
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--text2)', fontSize: 11 }}>{r.date}</td>
+                    <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', fontSize: 11, color: r.ageDays >= 30 ? '#ef4444' : 'var(--text2)', fontWeight: r.ageDays >= 30 ? 700 : 400 }}>{formatAge(r.ageDays)}</td>
                     <td style={{ padding: '8px 12px', color: 'var(--text2)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.seller}</td>
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--green)', fontWeight: 600 }}>{r.totalCost ? '$' + Math.round(r.totalCost).toLocaleString() : '—'}</td>
                     <td style={{ padding: '8px 12px' }}><TitleBadge status={r.titleStatus} /></td>
@@ -231,7 +240,7 @@ export default function CarMaxTab() {
                 ))}
                 {paged.length === 0 && (
                   <tr>
-                    <td colSpan={11} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+                    <td colSpan={12} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
                       No results{search ? ` for "${search}"` : ''}
                     </td>
                   </tr>
@@ -280,6 +289,7 @@ export default function CarMaxTab() {
             badge={<TitleBadge status={r.titleStatus} />}
             fields={DETAIL_FIELDS.map(([key, label]) => [label, key === 'totalCost' || key === 'price' || key === 'buyFee' || key === 'adminFee'
               ? (r[key] ? '$' + Math.round(r[key]).toLocaleString() : '')
+              : key === 'age' ? formatAge(r.ageDays)
               : (key === 'miles' ? (r[key] ? Number(r[key]).toLocaleString() : '') : r[key])])}
             accentColor={meta.color}
           />
@@ -340,6 +350,9 @@ function CarMaxGallery({ rows, meta, pageOffset = 0, onOpen }) {
                 <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--green)' }}>
                   {r.totalCost ? '$' + Math.round(r.totalCost).toLocaleString() : ''}
                 </span>
+              </div>
+              <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: r.ageDays >= 30 ? '#ef4444' : 'var(--text3)', fontWeight: r.ageDays >= 30 ? 700 : 400 }}>
+                Age: {formatAge(r.ageDays)}
               </div>
               {r.seller && (
                 <div style={{ fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.seller}>{r.seller}</div>
