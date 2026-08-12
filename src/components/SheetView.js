@@ -1,9 +1,11 @@
 // src/components/SheetView.js
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import { SOURCE_META, parseDate } from '../utils/schema';
+import { SOURCE_META, parseDate, daysSince, formatAge } from '../utils/schema';
+import { filterByAge } from '../utils/ageFilter';
 import { exportRowsToExcel } from '../utils/exportExcel';
 import CarDetailModal from './CarDetailModal';
+import AgeFilter from './AgeFilter';
 import { Search, ChevronUp, ChevronDown, ExternalLink, LayoutGrid, List, ImageOff, Download, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 
 const PAGE_SIZE = 50;
@@ -37,12 +39,21 @@ export default function SheetView({ label }) {
     ? TITLE_RAW_COLUMN[sheet.source] : null;
   const dateCol = findDateColumn(columns);
 
+  // Attach a computed age-in-days to each row (based on the detected date
+  // column) so the Car Age filter and Age column work on every sheet without
+  // needing a source-specific schema mapping.
+  const rows = useMemo(() => {
+    if (!dateCol) return rawRows;
+    return rawRows.map(r => ({ ...r, ageDays: daysSince(r[dateCol]) }));
+  }, [rawRows, dateCol]);
+
   const [search,  setSearch]  = useState('');
   const [sortCol, setSortCol] = useState(() => dateCol);
   const [sortDir, setSortDir] = useState('desc');
   const [page,    setPage]    = useState(0);
   const [view,    setView]    = useState('table'); // table | gallery
   const [statusFilter, setStatusFilter] = useState('all');
+  const [ageFilter, setAgeFilter] = useState('all');
   const [modalIndex, setModalIndex] = useState(null);
 
   // Distinct title-status values present in this sheet, with counts — order:
@@ -51,27 +62,28 @@ export default function SheetView({ label }) {
   const statusTabs = useMemo(() => {
     if (!titleCol) return [];
     const counts = {};
-    rawRows.forEach(r => {
+    rows.forEach(r => {
       const v = String(r[titleCol] || '').trim() || 'Unknown';
       counts[v] = (counts[v] || 0) + 1;
     });
     const priority = ['Available', 'Released', 'Received', 'Unavailable', 'Not Received', 'Unknown'];
     const keys = [...priority.filter(k => counts[k]), ...Object.keys(counts).filter(k => !priority.includes(k))];
     return keys.map(k => ({ value: k, count: counts[k] }));
-  }, [rawRows, titleCol]);
+  }, [rows, titleCol]);
 
   const filtered = useMemo(() => {
-    let rows = rawRows;
+    let out = rows;
     if (titleCol && statusFilter !== 'all') {
-      rows = rows.filter(r => (String(r[titleCol] || '').trim() || 'Unknown') === statusFilter);
+      out = out.filter(r => (String(r[titleCol] || '').trim() || 'Unknown') === statusFilter);
     }
+    out = filterByAge(out, ageFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
-      rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)));
+      out = out.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)));
     }
     if (sortCol) {
       const isDate = sortCol === dateCol;
-      rows = [...rows].sort((a, b) => {
+      out = [...out].sort((a, b) => {
         const av = a[sortCol] ?? '';
         const bv = b[sortCol] ?? '';
         let cmp;
@@ -86,8 +98,8 @@ export default function SheetView({ label }) {
         return sortDir === 'asc' ? cmp : -cmp;
       });
     }
-    return rows;
-  }, [rawRows, titleCol, statusFilter, search, sortCol, sortDir, dateCol]);
+    return out;
+  }, [rows, titleCol, statusFilter, ageFilter, search, sortCol, sortDir, dateCol]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged      = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -149,6 +161,9 @@ export default function SheetView({ label }) {
         </div>
       )}
 
+      {/* Age filter — how long a car has been sitting since its sale/purchase date */}
+      {dateCol && <AgeFilter value={ageFilter} onChange={id => { setAgeFilter(id); setPage(0); }} accentColor={meta.color} />}
+
       {/* Search + count */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
@@ -204,6 +219,17 @@ export default function SheetView({ label }) {
                     </span>
                   </th>
                 ))}
+                {dateCol && (
+                  <th onClick={() => handleSort('ageDays')}
+                    style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: sortCol === 'ageDays' ? meta.color : 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      Age
+                      {sortCol === 'ageDays'
+                        ? sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
+                        : <ChevronUp size={10} style={{ opacity: 0.15 }} />}
+                    </span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -236,11 +262,16 @@ export default function SheetView({ label }) {
                       </td>
                     );
                   })}
+                  {dateCol && (
+                    <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', fontSize: 11, color: row.ageDays >= 30 ? '#ef4444' : 'var(--text2)', fontWeight: row.ageDays >= 30 ? 700 : 400, whiteSpace: 'nowrap' }}>
+                      {formatAge(row.ageDays)}
+                    </td>
+                  )}
                 </tr>
               ))}
               {paged.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+                  <td colSpan={columns.length + (dateCol ? 1 : 0)} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
                     No results for "{search}"
                   </td>
                 </tr>
@@ -407,6 +438,11 @@ function GalleryGrid({ rows, columns, meta, source, pageOffset = 0, onOpen }) {
                   {!isNaN(priceNum) && c.price ? '$' + priceNum.toLocaleString() : ''}
                 </span>
               </div>
+              {row.ageDays !== undefined && (
+                <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: row.ageDays >= 30 ? '#ef4444' : 'var(--text3)', fontWeight: row.ageDays >= 30 ? 700 : 400 }}>
+                  Age: {formatAge(row.ageDays)}
+                </div>
+              )}
               {c.seller && (
                 <div style={{ fontSize: 11, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.seller}>{c.seller}</div>
               )}
