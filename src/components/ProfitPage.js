@@ -326,7 +326,7 @@ export default function ProfitPage() {
                   formatter={(v) => [fmt(v), 'Total Profit']}
                   labelFormatter={l => `Month: ${l}`}
                 />
-                <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="profit" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                   {byMonth.map((d, i) => <Cell key={i} fill={d.profit >= 0 ? GREEN : RED} />)}
                 </Bar>
               </BarChart>
@@ -345,7 +345,7 @@ export default function ProfitPage() {
                   contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
                   formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
                 />
-                <Bar dataKey="avgProfit" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="avgProfit" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                   {byPlatform.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Bar>
               </BarChart>
@@ -378,7 +378,7 @@ export default function ProfitPage() {
                 contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
                 formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
               />
-              <Bar dataKey="avgProfit" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="avgProfit" radius={[0, 4, 4, 0]} isAnimationActive={false}>
                 {byLocationChart.map((d, i) => <Cell key={i} fill={d.avgProfit >= 0 ? GREEN : RED} />)}
               </Bar>
             </BarChart>
