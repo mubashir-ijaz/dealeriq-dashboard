@@ -52,6 +52,8 @@ export default function ProfitPage() {
   const [search, setSearch]   = useState('');
   const [sortKey, setSortKey] = useState('profit');
   const [sortDir, setSortDir] = useState('desc');
+  const [page, setPage]       = useState(0);
+  const PAGE_SIZE = 50;
 
   // Filters
   const [sourceFilter, setSourceFilter]     = useState(new Set()); // empty = all
@@ -188,6 +190,14 @@ export default function ProfitPage() {
     });
     return list;
   }, [filtered, search, sortKey, sortDir]);
+
+  // Reset to page 0 whenever the underlying result set changes shape —
+  // otherwise a narrower filter/search can leave `page` pointing past the
+  // end of the new (shorter) list.
+  useEffect(() => { setPage(0); }, [filtered, search, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(tableFiltered.length / PAGE_SIZE));
+  const pagedTable  = tableFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const toggleSort = key => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -452,12 +462,17 @@ export default function ProfitPage() {
         </div>
       </Card>
 
-      {/* Most / least profitable cars — sortable, searchable */}
+      {/* Most / least profitable cars — sortable, searchable, paginated */}
       <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first">
-        <div style={{ position: 'relative', marginBottom: 12, maxWidth: 320 }}>
-          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search VIN or vehicle…"
-            style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', maxWidth: 320, flex: 1, minWidth: 220 }}>
+            <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search VIN or vehicle…"
+              style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>
+            {tableFiltered.length.toLocaleString()} cars
+          </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -475,7 +490,7 @@ export default function ProfitPage() {
               </tr>
             </thead>
             <tbody>
-              {tableFiltered.map(r => {
+              {pagedTable.map(r => {
                 const meta = metaFor(r.buySource);
                 return (
                   <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -497,11 +512,36 @@ export default function ProfitPage() {
           </table>
           {tableFiltered.length === 0 && <Empty text="No cars match the current filters" />}
         </div>
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
+            {[['«', () => setPage(0)], ['‹', () => setPage(p => p - 1)]].map(([lbl, fn], idx) => (
+              <PageBtn key={idx} onClick={fn} disabled={page === 0}>{lbl}</PageBtn>
+            ))}
+            <span style={{ fontSize: 12, color: 'var(--text2)', margin: '0 8px', fontFamily: 'var(--mono)' }}>
+              Page {page + 1} of {totalPages}
+            </span>
+            {[['›', () => setPage(p => p + 1)], ['»', () => setPage(totalPages - 1)]].map(([lbl, fn], idx) => (
+              <PageBtn key={idx} onClick={fn} disabled={page >= totalPages - 1}>{lbl}</PageBtn>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
 }
 
+function PageBtn({ children, onClick, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{
+        width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)',
+        background: 'var(--bg2)', color: disabled ? 'var(--text3)' : 'var(--text2)',
+        fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+      }}>
+      {children}
+    </button>
+  );
+}
 function Empty({ text }) {
   return <p style={{ color: 'var(--text3)', fontSize: 13, padding: '30px 0', textAlign: 'center' }}>{text}</p>;
 }
