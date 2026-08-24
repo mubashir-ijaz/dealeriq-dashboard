@@ -1,8 +1,11 @@
 // src/components/Overview.js
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
 import { DollarSign, Car, GitMerge, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 const fmt  = n => '$' + Math.round(n||0).toLocaleString();
 const fmtN = n => (n||0).toLocaleString();
@@ -39,8 +42,21 @@ export default function Overview() {
   }));
   const topYears = Object.entries(allYears).sort((a,b)=>Number(b[0])-Number(a[0])).slice(0,6);
 
+  // Running total of cars bought, all sources combined — answers "how is
+  // buying trending" at a glance without digging into Charts & Trends.
+  const runningTotal = useMemo(() => {
+    const byMonth = {};
+    stats.forEach(s => Object.entries(s.byMonth).forEach(([k,c]) => { byMonth[k] = (byMonth[k]||0)+c; }));
+    const months = Object.keys(byMonth).sort();
+    let running = 0;
+    return months.map(m => {
+      running += byMonth[m];
+      return { month: m.slice(5)+'/'+m.slice(2,4), bought: byMonth[m], running };
+    });
+  }, [stats]);
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:20, textAlign:'left' }}>
 
       {/* KPI row */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12 }}>
@@ -51,6 +67,30 @@ export default function Overview() {
         <KPI label="Titles OK"       value={fmtN(titlesOk)}   sub="Released / Available" icon={<CheckCircle size={16} color="#10b981"/>} accent="#10b981" span={1}/>
         <KPI label="Title Alerts"    value={fmtN(titleAlerts)} sub="Need action"         icon={<AlertTriangle size={16} color="#ef4444"/>} accent="#ef4444" span={1}/>
       </div>
+
+      {/* Running total — cars bought, all sources combined */}
+      {runningTotal.length > 1 && (
+        <Card title="Cars Bought Over Time — All Sources" subtitle="Running total (left axis area) vs. cars bought that month (hover for exact count)">
+          <ResponsiveContainer width="100%" height={190}>
+            <AreaChart data={runningTotal} margin={{ top:6, right:12, left:0, bottom:0 }}>
+              <defs>
+                <linearGradient id="runningFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35}/>
+                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/>
+              <XAxis dataKey="month" tick={{ fontSize:11, fill:'var(--text2)' }}/>
+              <YAxis tick={{ fontSize:11, fill:'var(--text2)' }} allowDecimals={false}/>
+              <Tooltip
+                contentStyle={{ background:'var(--bg2)', border:'1px solid var(--border2)', borderRadius:8, fontSize:12 }}
+                formatter={(v, name) => [fmtN(v), name === 'running' ? 'Total to date' : 'Bought that month']}
+              />
+              <Area type="monotone" dataKey="running" stroke="var(--accent)" strokeWidth={2.5} fill="url(#runningFill)" name="running"/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* Per-source cards */}
       <Row title="Purchases by Source">
@@ -168,16 +208,17 @@ function Chip({ label, value }) {
 }
 function Row({ title, children }) {
   return (
-    <div>
-      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:12 }}>{title}</h3>
+    <div style={{ textAlign:'left' }}>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:12, textAlign:'left' }}>{title}</h3>
       {children}
     </div>
   );
 }
-function Card({ title, children }) {
+function Card({ title, subtitle, children }) {
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
-      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:14 }}>{title}</h3>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)', textAlign:'left' }}>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom: subtitle?3:14, textAlign:'left' }}>{title}</h3>
+      {subtitle && <p style={{ fontSize:11.5, color:'var(--text3)', marginBottom:14, textAlign:'left' }}>{subtitle}</p>}
       {children}
     </div>
   );

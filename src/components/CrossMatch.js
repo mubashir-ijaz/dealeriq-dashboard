@@ -10,14 +10,19 @@ export default function CrossMatch() {
   const { matched } = crossMatch;
   const filtered = search ? matched.filter(({ vin }) => vin.toLowerCase().includes(search.toLowerCase())) : matched;
 
+  const titleMismatchCount = matched.filter(({ entries }) => {
+    const vals = entries.map(e => e.row.titleStatus).filter(t => t && t !== '—');
+    return new Set(vals).size > 1;
+  }).length;
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:18, textAlign:'left' }}>
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
         {[
           ['Vehicles Found in 2+ Sources', matched.length,    '#8b5cf6'],
           ['Sources Compared',             sheets.length || 4, '#3b82f6'],
-          ['Worth Double-Checking',        matched.length,    '#10b981'],
+          ['Title Status Disagrees',       titleMismatchCount, titleMismatchCount ? '#ef4444' : '#10b981'],
         ].map(([l,v,c])=>(
           <div key={l} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', borderTop:`2px solid ${c}`, boxShadow:'var(--shadow-sm)' }}>
             <div style={{ fontSize:26, fontWeight:800 }}>{v}</div>
@@ -56,18 +61,27 @@ export default function CrossMatch() {
             {filtered.map(({ vin, entries }) => {
               const prices  = entries.map(e => e.row.totalCost || e.row.price || 0).filter(Boolean);
               const spread  = prices.length > 1 ? Math.max(...prices) - Math.min(...prices) : 0;
+              // Title-status mismatch: same VIN, but sources disagree on
+              // whether the title is in hand — this is the actual thing
+              // worth flagging (a duplicate buy record is usually harmless;
+              // a title-status disagreement usually means one source is
+              // stale and needs a re-check).
+              const titleVals = entries.map(e => e.row.titleStatus).filter(t => t && t !== '—');
+              const titleMismatch = new Set(titleVals).size > 1;
               return (
-                <div key={vin} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
+                <div key={vin} style={{ background:'var(--card)', border: titleMismatch ? '1px solid rgba(239,68,68,0.35)' : '1px solid var(--border)', borderRadius:12, padding:18, boxShadow:'var(--shadow-sm)' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap' }}>
                     <code style={{ fontSize:13, fontWeight:800, color:'var(--amber)', fontFamily:'var(--mono)', letterSpacing:1 }}>{vin}</code>
                     <span style={{ background:'rgba(139,92,246,0.15)', color:'var(--purple)', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>{entries.length} Sources</span>
                     {spread > 0 && <span style={{ background:'rgba(16,185,129,0.12)', color:'var(--green)', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>Spread: ${spread.toLocaleString()}</span>}
+                    {titleMismatch && <span style={{ background:'rgba(239,68,68,0.15)', color:'var(--red)', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>⚠ Title status disagrees across sources</span>}
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:`repeat(${entries.length},1fr)`, gap:10 }}>
                     {entries.map((e,i) => {
                       const meta  = SOURCE_META[e.row.source] || {};
                       const r     = e.row;
                       const price = r.totalCost || r.price || 0;
+                      const hasTitle = r.titleStatus && r.titleStatus !== '—';
                       return (
                         <div key={i} style={{ background:'var(--bg2)', border:`1px solid ${meta.color}33`, borderLeft:`3px solid ${meta.color}`, borderRadius:9, padding:12 }}>
                           <div style={{ fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'1px', color:meta.color, marginBottom:8 }}>{e.label}</div>
@@ -76,6 +90,12 @@ export default function CrossMatch() {
                               <span style={{ fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{l}</span>
                               <span style={{ fontSize:11, fontFamily:'var(--mono)', color: l==='Price'?'var(--green)':'var(--text2)', fontWeight: l==='Price'?700:400 }}>{v}</span>
                             </div> : null
+                          )}
+                          {hasTitle && (
+                            <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, paddingTop:6, borderTop:`1px solid ${meta.color}22` }}>
+                              <span style={{ fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px' }}>Title</span>
+                              <span style={{ fontSize:11, fontWeight:800, color: titleMismatch ? 'var(--red)' : (['Released','Available','Received'].includes(r.titleStatus) ? 'var(--green)' : 'var(--amber)') }}>{r.titleStatus}</span>
+                            </div>
                           )}
                         </div>
                       );

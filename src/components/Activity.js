@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
 import { parseAnyDate } from '../utils/dateFilter';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import {
   Calendar, DollarSign, Car, TrendingUp, ChevronDown, ChevronUp,
@@ -43,6 +43,24 @@ export default function Activity() {
     return { count, spend, avg };
   }, [allRows]);
 
+  // Purchases-over-time trend within the current filter — this is the
+  // "what's actually trending" view; the per-source bar below only says
+  // volume by source, not by when.
+  const byDay = useMemo(() => {
+    const m = {};
+    allRows.forEach(r => {
+      const d = parseAnyDate(r.date);
+      if (!d) return;
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (!m[k]) m[k] = { day: k, count: 0, spend: 0 };
+      m[k].count += 1;
+      m[k].spend += Number(r.totalCost) || Number(r.price) || 0;
+    });
+    return Object.values(m)
+      .sort((a,b) => a.day.localeCompare(b.day))
+      .map(x => ({ ...x, label: `${x.day.slice(5,7)}/${x.day.slice(8,10)}` }));
+  }, [allRows]);
+
   // Per-source bar chart data
   const bySource = useMemo(() => {
     return sheets.map(sheet => {
@@ -71,7 +89,7 @@ export default function Activity() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, textAlign: 'left' }}>
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
@@ -80,6 +98,24 @@ export default function Activity() {
         <KPI label="Avg per Vehicle"  value={fmt(kpi.avg)}               icon={<TrendingUp size={16} color="#3b82f6" />} accent="#3b82f6" />
         <KPI label="Active Sources"   value={fmtN(bySource.filter(s => s.count > 0).length)} icon={<Calendar size={16} color="#8b5cf6" />} accent="#8b5cf6" />
       </div>
+
+      {/* Trend within the current filter */}
+      {byDay.length > 1 && (
+        <Card title="Purchases Over Time" subtitle="Cars bought per day in the selected period — where the activity is actually clustered">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={byDay} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text2)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text2)' }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 12 }}
+                formatter={(v, name) => name === 'count' ? [fmtN(v), 'Cars'] : [fmt(v), 'Spend']}
+              />
+              <Line type="monotone" dataKey="count" stroke="#e8720c" strokeWidth={2.5} dot={{ fill: '#e8720c', r: 3 }} name="count" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* Per-source bar chart */}
       <Card title="Vehicles by Source">
@@ -299,10 +335,11 @@ function KPI({ label, value, icon, accent }) {
   );
 }
 
-function Card({ title, children }) {
+function Card({ title, subtitle, children }) {
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: 'var(--shadow-sm)' }}>
-      <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 12 }}>{title}</h3>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
+      <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: subtitle ? 3 : 12, textAlign: 'left' }}>{title}</h3>
+      {subtitle && <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 12, textAlign: 'left' }}>{subtitle}</p>}
       {children}
     </div>
   );

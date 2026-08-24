@@ -27,6 +27,11 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Every page/card heading reads left-to-right, never centered — explicit
+   safety net on top of the inline textAlign:'left' each component already
+   sets, so this can't regress if a heading is added without it. */
+h1, h2, h3, h4, h5, h6 { text-align: left; }
+
 html, body, #root {
   height: 100%;
   background: var(--bg);

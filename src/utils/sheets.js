@@ -37,6 +37,17 @@ const SHEETS = [
   },
 ];
 
+// "Profit" tab (Manheim sold cars matched back to their buy record by VIN,
+// with profit computed) — published by carmax sale/dealeriq/manheim_profit.py
+// into a "Profit" tab inside the CarMax spreadsheet (same ID as above — the
+// service account has no Drive storage of its own to create a separate
+// spreadsheet, so it reuses one it's already an Editor on). Not part of
+// SHEETS above since it's a different row shape (one row per sold+matched
+// car, not a purchase record) — fetched separately by ProfitPage.js via
+// fetchProfitSheet() below.
+const PROFIT_SHEET_ID  = '1flfLQ1VEFDxjN6yPkn5XvQWvU7UkFEgh_qkxxbtOZ5M';
+const PROFIT_SHEET_TAB = 'Profit';
+
 // Parse Google's gviz JSON wrapper
 function parseGviz(raw) {
   const match = raw.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/);
@@ -92,4 +103,18 @@ export async function fetchAllSheets() {
   return results;
 }
 
-export { SHEETS };
+// Fetch the Profit sheet (see PROFIT_SHEET_ID above). Returns [] before an
+// ID has been pasted in, or if manheim_profit.py hasn't been run yet /
+// the sheet can't be reached — callers show an empty state rather than
+// treating this as a fatal load error like the main SHEETS.
+export async function fetchProfitSheet() {
+  if (!PROFIT_SHEET_ID) return [];
+  try {
+    return await fetchSheet({ id: PROFIT_SHEET_ID, tab: PROFIT_SHEET_TAB });
+  } catch (e) {
+    console.warn('[sheets] Profit sheet fetch failed:', e.message);
+    return [];
+  }
+}
+
+export { SHEETS, PROFIT_SHEET_ID };

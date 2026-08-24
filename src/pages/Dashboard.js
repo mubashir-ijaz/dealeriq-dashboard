@@ -14,12 +14,14 @@ import ValueMyVehicleTab from '../components/ValueMyVehicleTab';
 import DateFilter from '../components/DateFilter';
 import Activity from '../components/Activity';
 import BacklotsOpportunities from '../components/BacklotsOpportunities';
-import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy, Car } from 'lucide-react';
+import ProfitPage from '../components/ProfitPage';
+import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy, Car, DollarSign } from 'lucide-react';
 
 const PAGE_INFO = {
   overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
   activity:   { title: 'Activity',         subtitle: 'Recent purchases by source, newest first',                       icon: Calendar },
   charts:     { title: 'Charts & Trends',  subtitle: 'Spend, makes, and purchase volume at a glance',                  icon: BarChart2 },
+  profit:     { title: 'Profit',           subtitle: 'Manheim sales matched to buy cost — most profitable cars, by date, by buying location', icon: DollarSign },
   crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
   titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
   carmax:     { title: 'CarMax',           subtitle: 'Browse all CarMax purchases, filter to title-issue cars, and export to Excel', icon: Car },
@@ -105,6 +107,7 @@ export default function Dashboard({ onLogout }) {
           {page === 'overview'   && <Overview />}
           {page === 'activity'   && <Activity />}
           {page === 'charts'     && <ChartsPage />}
+          {page === 'profit'     && <ProfitPage />}
           {page === 'crossmatch' && <CrossMatch />}
           {page === 'titles'     && <TitleStatus />}
           {page === 'carmax'     && <CarMaxTab />}

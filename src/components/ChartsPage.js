@@ -60,7 +60,7 @@ export default function ChartsPage() {
   }, [stats]);
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, textAlign:'left' }}>
 
       <CC title="Vehicles per Source">
         <ResponsiveContainer width="100%" height={210}>
@@ -176,8 +176,8 @@ export default function ChartsPage() {
 
 function CC({ title, children, wide }) {
   return (
-    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20, gridColumn: wide?'span 2':'auto', boxShadow:'var(--shadow-sm)' }}>
-      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:14 }}>{title}</h3>
+    <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:13, padding:20, gridColumn: wide?'span 2':'auto', boxShadow:'var(--shadow-sm)', textAlign:'left' }}>
+      <h3 style={{ fontSize:14, fontWeight:800, letterSpacing:'-0.1px', color:'var(--text)', marginBottom:14, textAlign:'left' }}>{title}</h3>
       {children}
     </div>
   );
