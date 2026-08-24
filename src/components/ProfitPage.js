@@ -1,28 +1,42 @@
 // src/components/ProfitPage.js
 // Profit analysis — Manheim sold cars matched back to their buy record by
-// VIN (see carmax sale/dealeriq/manheim_profit.py). Answers the two
-// questions that actually matter for buying decisions:
+// VIN (see carmax sale/dealeriq/manheim_profit.py). Answers the questions
+// that actually matter for buying decisions:
 //   1. Which cars/periods were most profitable? (sortable table + trend)
-//   2. Which BUYING auction location gives the cheapest cars with the best
-//      profit? (bar chart, avg profit + avg buy cost per location)
+//   2. Which BUYING PLATFORM (CarMax, Edge, OpenLane, ADESA, VMV) is most
+//      profitable?
+//   3. Which BUYING auction LOCATION gives the cheapest cars with the best
+//      profit?
+//   ...filterable by platform, location, and sale date so you can drill in.
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchProfitSheet, PROFIT_SHEET_ID } from '../utils/sheets';
-import { parseDate } from '../utils/schema';
+import { parseDate, SOURCE_META } from '../utils/schema';
+import { DATE_FILTERS, getDateCutoff } from '../utils/dateFilter';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 import {
   DollarSign, TrendingUp, TrendingDown, MapPin, Search, ArrowUpDown,
-  ArrowUp, ArrowDown, AlertTriangle, Trophy,
+  ArrowUp, ArrowDown, AlertTriangle, Trophy, Filter, X, Building2,
 } from 'lucide-react';
 
 const fmt   = n => '$' + Math.round(n || 0).toLocaleString();
 const fmtN  = n => (n || 0).toLocaleString();
 const GREEN = '#10b981';
 const RED   = '#ef4444';
-const GRID  = 'var(--border)';
-const AXIS  = { fill: 'var(--text2)', fontSize: 11 };
+// Literal colors, not CSS var() strings — recharts' SVG attributes render
+// reliably with plain values; matches the pattern already proven out in
+// ChartsPage.js.
+const GRID  = '#e6e8f0';
+const AXIS  = { fill: '#5b5f6d', fontSize: 11 };
+const GRAY  = '#94a3b8';
+
+// Buy_Source values (written by manheim_profit.py) match SOURCE_META's
+// `label` exactly ("CarMax", "Edge Pipeline", ...) — build a reverse lookup
+// so platform bars/badges use the same colors as the rest of the dashboard.
+const LABEL_TO_META = Object.fromEntries(Object.values(SOURCE_META).map(m => [m.label, m]));
+const metaFor = label => LABEL_TO_META[label] || { color: GRAY, bg: '#94a3b822', border: '#94a3b855' };
 
 function num(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -30,12 +44,20 @@ function num(v) {
   return isNaN(n) ? null : n;
 }
 
+const MIN_LOCATION_OPTIONS = [1, 2, 3, 5, 10];
+
 export default function ProfitPage() {
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState('');
   const [sortKey, setSortKey] = useState('profit');
   const [sortDir, setSortDir] = useState('desc');
+
+  // Filters
+  const [sourceFilter, setSourceFilter]     = useState(new Set()); // empty = all
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [dateFilterId, setDateFilterId]     = useState('all');
+  const [minLocationCars, setMinLocationCars] = useState(2);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,18 +85,45 @@ export default function ProfitPage() {
   const matched   = useMemo(() => parsed.filter(r => r.matched && r.profit !== null), [parsed]);
   const unmatched = useMemo(() => parsed.filter(r => !r.matched), [parsed]);
 
+  const availableSources = useMemo(() =>
+    [...new Set(matched.map(r => r.buySource).filter(Boolean))].sort(), [matched]);
+
+  const availableLocations = useMemo(() => {
+    const counts = {};
+    matched.forEach(r => { counts[r.buyLocation] = (counts[r.buyLocation] || 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [matched]);
+
+  // Apply platform / location / date filters — everything below (KPIs,
+  // charts, table) reacts to this one filtered set.
+  const filtered = useMemo(() => {
+    const cutoff = getDateCutoff(dateFilterId);
+    return matched.filter(r => {
+      if (sourceFilter.size > 0 && !sourceFilter.has(r.buySource)) return false;
+      if (locationFilter !== 'all' && r.buyLocation !== locationFilter) return false;
+      if (cutoff) {
+        const d = parseDate(r.saleDate);
+        if (!d || d < cutoff) return false;
+      }
+      return true;
+    });
+  }, [matched, sourceFilter, locationFilter, dateFilterId]);
+
+  const activeFilterCount =
+    (sourceFilter.size > 0 ? 1 : 0) + (locationFilter !== 'all' ? 1 : 0) + (dateFilterId !== 'all' ? 1 : 0);
+
   const kpi = useMemo(() => {
-    const totalProfit = matched.reduce((s, r) => s + r.profit, 0);
-    const avgProfit    = matched.length ? totalProfit / matched.length : 0;
-    const winners       = matched.filter(r => r.profit > 0).length;
-    const losers         = matched.filter(r => r.profit < 0).length;
-    return { totalProfit, avgProfit, winners, losers, sold: parsed.length, matchedCount: matched.length };
-  }, [matched, parsed]);
+    const totalProfit = filtered.reduce((s, r) => s + r.profit, 0);
+    const avgProfit    = filtered.length ? totalProfit / filtered.length : 0;
+    const winners       = filtered.filter(r => r.profit > 0).length;
+    const losers         = filtered.filter(r => r.profit < 0).length;
+    return { totalProfit, avgProfit, winners, losers, count: filtered.length };
+  }, [filtered]);
 
   // Profit by month
   const byMonth = useMemo(() => {
     const m = {};
-    matched.forEach(r => {
+    filtered.forEach(r => {
       const d = parseDate(r.saleDate);
       if (!d) return;
       const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -85,13 +134,31 @@ export default function ProfitPage() {
     return Object.values(m)
       .sort((a, b) => a.month.localeCompare(b.month))
       .map(x => ({ ...x, label: x.month.slice(5) + '/' + x.month.slice(2, 4), avg: x.profit / x.count }));
-  }, [matched]);
+  }, [filtered]);
 
-  // Profit by buying location — the "which auction gives cheap + profitable
-  // cars" view. Sorted by avg profit descending so the best locations lead.
-  const byLocation = useMemo(() => {
+  // Profit by buying platform (CarMax / Edge / OpenLane / ADESA / VMV) —
+  // the dimension you actually buy through, distinct from physical location.
+  const byPlatform = useMemo(() => {
     const m = {};
-    matched.forEach(r => {
+    filtered.forEach(r => {
+      const src = r.buySource || 'Unknown';
+      if (!m[src]) m[src] = { source: src, profit: 0, count: 0, cost: 0 };
+      m[src].profit += r.profit;
+      m[src].count += 1;
+      m[src].cost += r.buyCost || 0;
+    });
+    return Object.values(m)
+      .map(x => ({ ...x, avgProfit: x.profit / x.count, avgCost: x.cost / x.count, color: metaFor(x.source).color }))
+      .sort((a, b) => b.avgProfit - a.avgProfit);
+  }, [filtered]);
+
+  // Profit by buying location — single-car locations are excluded from the
+  // ranked chart by default (minLocationCars) since one lucky/unlucky car
+  // isn't a meaningful "this location is good" signal; the table below can
+  // still show every location at minLocationCars=1.
+  const byLocationAll = useMemo(() => {
+    const m = {};
+    filtered.forEach(r => {
       const loc = r.buyLocation || 'Unknown';
       if (!m[loc]) m[loc] = { location: loc, profit: 0, count: 0, cost: 0 };
       m[loc].profit += r.profit;
@@ -100,14 +167,17 @@ export default function ProfitPage() {
     });
     return Object.values(m)
       .map(x => ({ ...x, avgProfit: x.profit / x.count, avgCost: x.cost / x.count }))
-      .filter(x => x.count >= 1)
       .sort((a, b) => b.avgProfit - a.avgProfit);
-  }, [matched]);
+  }, [filtered]);
+  const byLocation = useMemo(() =>
+    byLocationAll.filter(x => x.count >= minLocationCars), [byLocationAll, minLocationCars]);
+  const byLocationChart = useMemo(() => byLocation.slice(0, 8), [byLocation]);
+  const excludedLocationCount = byLocationAll.length - byLocation.length;
 
-  const filtered = useMemo(() => {
+  const tableFiltered = useMemo(() => {
     let list = search
-      ? matched.filter(r => r.vin.toLowerCase().includes(search.toLowerCase()) || r.vehicle.toLowerCase().includes(search.toLowerCase()))
-      : matched;
+      ? filtered.filter(r => r.vin.toLowerCase().includes(search.toLowerCase()) || r.vehicle.toLowerCase().includes(search.toLowerCase()))
+      : filtered;
     list = [...list].sort((a, b) => {
       let av = a[sortKey], bv = b[sortKey];
       if (typeof av === 'string') { av = av.toLowerCase(); bv = (bv || '').toLowerCase(); }
@@ -117,7 +187,7 @@ export default function ProfitPage() {
       return 0;
     });
     return list;
-  }, [matched, search, sortKey, sortDir]);
+  }, [filtered, search, sortKey, sortDir]);
 
   const toggleSort = key => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -126,6 +196,15 @@ export default function ProfitPage() {
   const SortIcon = ({ k }) => sortKey !== k
     ? <ArrowUpDown size={11} style={{ opacity: 0.5 }} />
     : (sortDir === 'asc' ? <ArrowUp size={11} color="var(--accent)" /> : <ArrowDown size={11} color="var(--accent)" />);
+
+  const toggleSourceFilter = src => {
+    setSourceFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src); else next.add(src);
+      return next;
+    });
+  };
+  const clearFilters = () => { setSourceFilter(new Set()); setLocationFilter('all'); setDateFilterId('all'); };
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text2)' }}>Loading profit data…</div>;
@@ -138,10 +217,8 @@ export default function ProfitPage() {
         <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>Profit page isn't wired up yet</p>
         <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.7 }}>
           Run <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>python manheim_profit.py</code> once
-          from <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>carmax sale/dealeriq/</code> — it
-          matches every Manheim-sold car back to its buy record by VIN, computes profit, and publishes to a "Profit" tab inside
-          the CarMax Google Sheet. Then set <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>PROFIT_SHEET_ID</code> in <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>src/utils/sheets.js</code>
-          and this page goes live.
+          from <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>carmax sale/dealeriq/</code>, then
+          set <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>PROFIT_SHEET_ID</code> in <code style={{ fontFamily: 'var(--mono)', background: 'var(--bg3)', padding: '2px 6px', borderRadius: 5 }}>src/utils/sheets.js</code>.
         </p>
       </div>
     );
@@ -160,64 +237,162 @@ export default function ProfitPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, textAlign: 'left' }}>
 
+      {/* Filter bar */}
+      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 18px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Filter size={13} color="var(--text3)" />
+          <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text3)' }}>Filter</span>
+          {activeFilterCount > 0 && (
+            <button onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              <X size={12} /> Clear {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'}
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          {/* Buying platform pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, marginRight: 2 }}>Platform:</span>
+            {availableSources.map(src => {
+              const meta = metaFor(src);
+              const active = sourceFilter.has(src);
+              return (
+                <button key={src} onClick={() => toggleSourceFilter(src)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 20,
+                    border: `1px solid ${active ? meta.color : 'var(--border2)'}`,
+                    background: active ? `${meta.color}20` : 'transparent',
+                    color: active ? meta.color : 'var(--text2)',
+                    fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
+                  {src}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Location dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MapPin size={12} color="var(--text3)" />
+            <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
+              style={{ padding: '5px 9px', borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 12, outline: 'none', maxWidth: 220 }}>
+              <option value="all">All Locations</option>
+              {availableLocations.map(([loc, count]) => (
+                <option key={loc} value={loc}>{loc} ({count})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date presets */}
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 9, padding: 3 }}>
+            {DATE_FILTERS.map(f => (
+              <button key={f.id} onClick={() => setDateFilterId(f.id)}
+                style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: dateFilterId === f.id ? 'var(--accent)' : 'transparent', color: dateFilterId === f.id ? '#fff' : 'var(--text2)', fontSize: 11.5, fontWeight: dateFilterId === f.id ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
         <KPI label="Total Profit"     value={fmt(kpi.totalProfit)} accent={kpi.totalProfit >= 0 ? GREEN : RED} icon={<DollarSign size={16} color={kpi.totalProfit >= 0 ? GREEN : RED} />} />
         <KPI label="Avg Profit / Car" value={fmt(kpi.avgProfit)}   accent={kpi.avgProfit >= 0 ? GREEN : RED}   icon={<TrendingUp size={16} color="#3b82f6" />} />
         <KPI label="Winners"          value={fmtN(kpi.winners)}    accent={GREEN} icon={<TrendingUp size={16} color={GREEN} />} sub="Sold above buy cost" />
         <KPI label="Losers"           value={fmtN(kpi.losers)}     accent={RED}   icon={<TrendingDown size={16} color={RED} />} sub="Sold below buy cost" />
-        <KPI label="Cars Sold"        value={fmtN(kpi.sold)}       accent="#8b5cf6" icon={<Trophy size={16} color="#8b5cf6" />} sub={`${kpi.matchedCount} matched to a buy`} />
+        <KPI label="Cars (filtered)"  value={fmtN(kpi.count)}      accent="#8b5cf6" icon={<Trophy size={16} color="#8b5cf6" />} sub={`of ${matched.length} matched total`} />
       </div>
 
       {unmatched.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: 'var(--text2)' }}>
           <AlertTriangle size={15} color="#f59e0b" style={{ flexShrink: 0 }} />
-          <span><strong style={{ color: '#f59e0b' }}>{unmatched.length}</strong> Manheim-sold car{unmatched.length === 1 ? '' : 's'} couldn't be matched to a buy record in any source — profit not computed for {unmatched.length === 1 ? 'it' : 'them'}. Usually means the buy happened before that source's sheet started, or the VIN was mistyped on export.</span>
+          <span><strong style={{ color: '#f59e0b' }}>{unmatched.length}</strong> Manheim-sold car{unmatched.length === 1 ? '' : 's'} couldn't be matched to a buy record in any source — not counted above. Usually means the buy happened before that source's sheet started, or the VIN was mistyped on export.</span>
         </div>
       )}
 
-      {/* Profit by date + Profit by location */}
+      {/* Profit by date + Profit by buying platform */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <Card title="Profit by Month" subtitle="Total profit and cars sold per month — check this against your buy volume that month">
-          <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={byMonth} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-              <XAxis dataKey="label" tick={AXIS} />
-              <YAxis tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
-              <Tooltip
-                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 12 }}
-                formatter={(v, name) => name === 'profit' ? [fmt(v), 'Total Profit'] : [v, name]}
-                labelFormatter={l => `Month: ${l}`}
-              />
-              <ReferenceLine y={0} stroke="var(--text3)" />
-              <Bar dataKey="profit" name="profit" radius={[4, 4, 0, 0]}>
-                {byMonth.map((d, i) => <Cell key={i} fill={d.profit >= 0 ? GREEN : RED} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <Card title="Profit by Month" subtitle="Total profit and cars sold per month">
+          {byMonth.length === 0 ? <Empty text="No dated sales in this filter" /> : (
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={byMonth} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                <XAxis dataKey="label" tick={AXIS} />
+                <YAxis tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
+                <Tooltip
+                  contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
+                  formatter={(v) => [fmt(v), 'Total Profit']}
+                  labelFormatter={l => `Month: ${l}`}
+                />
+                <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
+                  {byMonth.map((d, i) => <Cell key={i} fill={d.profit >= 0 ? GREEN : RED} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
-        <Card title="Profit by Buying Location" subtitle="Avg profit per car at each auction you buy from — where the cheap-but-profitable cars are coming from">
-          <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={byLocation.slice(0, 8)} layout="vertical" margin={{ top: 4, right: 24, left: 6, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-              <XAxis type="number" tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
-              <YAxis dataKey="location" type="category" tick={{ ...AXIS, fontSize: 10 }} width={110} />
-              <Tooltip
-                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 12 }}
-                formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
-              />
-              <ReferenceLine x={0} stroke="var(--text3)" />
-              <Bar dataKey="avgProfit" radius={[0, 4, 4, 0]}>
-                {byLocation.slice(0, 8).map((d, i) => <Cell key={i} fill={d.avgProfit >= 0 ? GREEN : RED} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <Card title="Profit by Buying Platform" subtitle="Avg profit per car through each buying platform">
+          {byPlatform.length === 0 ? <Empty text="No data in this filter" /> : (
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={byPlatform} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                <XAxis dataKey="source" tick={{ ...AXIS, fontSize: 10.5 }} interval={0} angle={-12} textAnchor="end" height={44} />
+                <YAxis tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
+                <Tooltip
+                  contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
+                  formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
+                />
+                <Bar dataKey="avgProfit" radius={[4, 4, 0, 0]}>
+                  {byPlatform.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
       </div>
 
-      {/* Location breakdown table — the actual "cheap + profitable" answer */}
-      <Card title="Buying Location Breakdown" subtitle="Sorted by avg profit — best locations to buy from, first">
+      {/* Profit by buying location */}
+      <Card
+        title="Profit by Buying Location"
+        subtitle="Avg profit per car at each auction/lot you buy from — where the cheap-but-profitable cars come from"
+        headerExtra={
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text3)' }}>
+            Min cars/location:
+            <select value={minLocationCars} onChange={e => setMinLocationCars(Number(e.target.value))}
+              style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 11.5, outline: 'none' }}>
+              {MIN_LOCATION_OPTIONS.map(n => <option key={n} value={n}>{n}+</option>)}
+            </select>
+          </label>
+        }
+      >
+        {byLocationChart.length === 0 ? <Empty text="No location has enough cars at this threshold — lower Min cars/location above" /> : (
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={byLocationChart} layout="vertical" margin={{ top: 4, right: 24, left: 6, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis type="number" tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
+              <YAxis dataKey="location" type="category" tick={{ ...AXIS, fontSize: 10 }} width={130} />
+              <Tooltip
+                contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
+                formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
+              />
+              <Bar dataKey="avgProfit" radius={[0, 4, 4, 0]}>
+                {byLocationChart.map((d, i) => <Cell key={i} fill={d.avgProfit >= 0 ? GREEN : RED} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+        {excludedLocationCount > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10 }}>
+            {excludedLocationCount} location{excludedLocationCount === 1 ? '' : 's'} with fewer than {minLocationCars} car{minLocationCars === 1 ? '' : 's'} hidden from ranking (still counted in totals above) — see full table below.
+          </p>
+        )}
+      </Card>
+
+      {/* Location breakdown table — every location, unfiltered by the min-cars threshold */}
+      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden">
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
@@ -230,8 +405,8 @@ export default function ProfitPage() {
               </tr>
             </thead>
             <tbody>
-              {byLocation.map(l => (
-                <tr key={l.location} style={{ borderBottom: '1px solid var(--border)' }}>
+              {byLocationAll.map(l => (
+                <tr key={l.location} style={{ borderBottom: '1px solid var(--border)', opacity: l.count < minLocationCars ? 0.55 : 1 }}>
                   <td style={{ padding: '8px 10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <MapPin size={12} color="var(--text3)" />{l.location}
                   </td>
@@ -239,6 +414,37 @@ export default function ProfitPage() {
                   <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(l.avgCost)}</td>
                   <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: l.avgProfit >= 0 ? GREEN : RED }}>{fmt(l.avgProfit)}</td>
                   <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: l.profit >= 0 ? GREEN : RED }}>{fmt(l.profit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Buying platform breakdown table */}
+      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <Th>Platform</Th>
+                <Th align="right">Cars</Th>
+                <Th align="right">Avg Buy Cost</Th>
+                <Th align="right">Avg Profit</Th>
+                <Th align="right">Total Profit</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {byPlatform.map(p => (
+                <tr key={p.source} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <Building2 size={12} color={p.color} />
+                    <span style={{ color: p.color }}>{p.source}</span>
+                  </td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{p.count}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(p.avgCost)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: p.avgProfit >= 0 ? GREEN : RED }}>{fmt(p.avgProfit)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: p.profit >= 0 ? GREEN : RED }}>{fmt(p.profit)}</td>
                 </tr>
               ))}
             </tbody>
@@ -259,7 +465,7 @@ export default function ProfitPage() {
               <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
                 <SortTh k="vehicle" label="Vehicle" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vehicle" /></SortTh>
                 <SortTh k="vin" label="VIN" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vin" /></SortTh>
-                <SortTh k="buySource" label="Buy Source" onClick={toggleSort} sortKey={sortKey}><SortIcon k="buySource" /></SortTh>
+                <SortTh k="buySource" label="Platform" onClick={toggleSort} sortKey={sortKey}><SortIcon k="buySource" /></SortTh>
                 <SortTh k="buyLocation" label="Buy Location" onClick={toggleSort} sortKey={sortKey}><SortIcon k="buyLocation" /></SortTh>
                 <SortTh k="buyCost" label="Buy Cost" align="right" onClick={toggleSort} sortKey={sortKey}><SortIcon k="buyCost" /></SortTh>
                 <SortTh k="salePrice" label="Sale Price" align="right" onClick={toggleSort} sortKey={sortKey}><SortIcon k="salePrice" /></SortTh>
@@ -269,27 +475,36 @@ export default function ProfitPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => (
-                <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
-                  <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
-                  <td style={{ padding: '8px 10px' }}>{r.buySource}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--text2)' }}>{r.buyLocation}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.buyCost)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.salePrice)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 800, color: r.profit >= 0 ? GREEN : RED }}>{fmt(r.profit)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{r.daysHeld ?? '—'}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--text2)', fontSize: 11 }}>{r.saleDate}</td>
-                </tr>
-              ))}
+              {tableFiltered.map(r => {
+                const meta = metaFor(r.buySource);
+                return (
+                  <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
+                    <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <span style={{ color: meta.color, fontWeight: 600 }}>{r.buySource}</span>
+                    </td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text2)' }}>{r.buyLocation}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.buyCost)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.salePrice)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 800, color: r.profit >= 0 ? GREEN : RED }}>{fmt(r.profit)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{r.daysHeld ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text2)', fontSize: 11 }}>{r.saleDate}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          {tableFiltered.length === 0 && <Empty text="No cars match the current filters" />}
         </div>
       </Card>
     </div>
   );
 }
 
+function Empty({ text }) {
+  return <p style={{ color: 'var(--text3)', fontSize: 13, padding: '30px 0', textAlign: 'center' }}>{text}</p>;
+}
 function KPI({ label, value, sub, icon, accent }) {
   return (
     <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', borderTop: `3px solid ${accent}`, boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
@@ -302,10 +517,13 @@ function KPI({ label, value, sub, icon, accent }) {
     </div>
   );
 }
-function Card({ title, subtitle, children }) {
+function Card({ title, subtitle, headerExtra, children }) {
   return (
     <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 13, padding: 18, boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
-      <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginBottom: subtitle ? 3 : 14, textAlign: 'left' }}>{title}</h3>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: subtitle ? 3 : 14 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', textAlign: 'left' }}>{title}</h3>
+        {headerExtra}
+      </div>
       {subtitle && <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 14, textAlign: 'left' }}>{subtitle}</p>}
       {children}
     </div>
