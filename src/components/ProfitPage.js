@@ -19,6 +19,7 @@ import {
 import {
   DollarSign, TrendingUp, TrendingDown, MapPin, Search, ArrowUpDown,
   ArrowUp, ArrowDown, AlertTriangle, Trophy, Filter, X, Building2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 
 const fmt   = n => '$' + Math.round(n || 0).toLocaleString();
@@ -60,6 +61,8 @@ export default function ProfitPage() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [dateFilterId, setDateFilterId]     = useState('all');
   const [minLocationCars, setMinLocationCars] = useState(2);
+  const [expandedLocations, setExpandedLocations] = useState(new Set());
+  const [expandedPlatforms, setExpandedPlatforms] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +218,23 @@ export default function ProfitPage() {
     });
   };
   const clearFilters = () => { setSourceFilter(new Set()); setLocationFilter('all'); setDateFilterId('all'); };
+
+  const toggleLocationExpand = loc => setExpandedLocations(prev => {
+    const next = new Set(prev);
+    if (next.has(loc)) next.delete(loc); else next.add(loc);
+    return next;
+  });
+  const togglePlatformExpand = src => setExpandedPlatforms(prev => {
+    const next = new Set(prev);
+    if (next.has(src)) next.delete(src); else next.add(src);
+    return next;
+  });
+  // Cars behind one expanded location/platform row — pulled from `filtered`
+  // (so it respects the top filter bar too), highest profit first, capped
+  // so one huge platform (thousands of cars) can't blow up the page.
+  const carsForLocation = loc => filtered.filter(r => r.buyLocation === loc).sort((a, b) => b.profit - a.profit);
+  const carsForPlatform = src => filtered.filter(r => r.buySource === src).sort((a, b) => b.profit - a.profit);
+  const EXPAND_CAP = 100;
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text2)' }}>Loading profit data…</div>;
@@ -402,11 +422,12 @@ export default function ProfitPage() {
       </Card>
 
       {/* Location breakdown table — every location, unfiltered by the min-cars threshold */}
-      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden">
+      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden. Click a row to see the individual cars.">
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <Th></Th>
                 <Th>Location</Th>
                 <Th align="right">Cars</Th>
                 <Th align="right">Avg Buy Cost</Th>
@@ -415,28 +436,47 @@ export default function ProfitPage() {
               </tr>
             </thead>
             <tbody>
-              {byLocationAll.map(l => (
-                <tr key={l.location} style={{ borderBottom: '1px solid var(--border)', opacity: l.count < minLocationCars ? 0.55 : 1 }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <MapPin size={12} color="var(--text3)" />{l.location}
-                  </td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{l.count}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(l.avgCost)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: l.avgProfit >= 0 ? GREEN : RED }}>{fmt(l.avgProfit)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: l.profit >= 0 ? GREEN : RED }}>{fmt(l.profit)}</td>
-                </tr>
-              ))}
+              {byLocationAll.map(l => {
+                const open = expandedLocations.has(l.location);
+                return (
+                  <React.Fragment key={l.location}>
+                    <tr onClick={() => toggleLocationExpand(l.location)}
+                      style={{ borderBottom: open ? 'none' : '1px solid var(--border)', opacity: l.count < minLocationCars ? 0.55 : 1, cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '8px 4px', width: 20 }}>
+                        {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+                      </td>
+                      <td style={{ padding: '8px 10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <MapPin size={12} color="var(--text3)" />{l.location}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{l.count}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(l.avgCost)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: l.avgProfit >= 0 ? GREEN : RED }}>{fmt(l.avgProfit)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: l.profit >= 0 ? GREEN : RED }}>{fmt(l.profit)}</td>
+                    </tr>
+                    {open && (
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td colSpan={6} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
+                          <CarsSubTable cars={carsForLocation(l.location)} cap={EXPAND_CAP} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </Card>
 
       {/* Buying platform breakdown table */}
-      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side">
+      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars.">
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <Th></Th>
                 <Th>Platform</Th>
                 <Th align="right">Cars</Th>
                 <Th align="right">Avg Buy Cost</Th>
@@ -445,18 +485,36 @@ export default function ProfitPage() {
               </tr>
             </thead>
             <tbody>
-              {byPlatform.map(p => (
-                <tr key={p.source} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Building2 size={12} color={p.color} />
-                    <span style={{ color: p.color }}>{p.source}</span>
-                  </td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{p.count}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(p.avgCost)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: p.avgProfit >= 0 ? GREEN : RED }}>{fmt(p.avgProfit)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: p.profit >= 0 ? GREEN : RED }}>{fmt(p.profit)}</td>
-                </tr>
-              ))}
+              {byPlatform.map(p => {
+                const open = expandedPlatforms.has(p.source);
+                return (
+                  <React.Fragment key={p.source}>
+                    <tr onClick={() => togglePlatformExpand(p.source)}
+                      style={{ borderBottom: open ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '8px 4px', width: 20 }}>
+                        {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+                      </td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Building2 size={12} color={p.color} />
+                        <span style={{ color: p.color }}>{p.source}</span>
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{p.count}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(p.avgCost)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: p.avgProfit >= 0 ? GREEN : RED }}>{fmt(p.avgProfit)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: p.profit >= 0 ? GREEN : RED }}>{fmt(p.profit)}</td>
+                    </tr>
+                    {open && (
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td colSpan={6} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
+                          <CarsSubTable cars={carsForPlatform(p.source)} cap={EXPAND_CAP} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -530,6 +588,48 @@ export default function ProfitPage() {
   );
 }
 
+// The drill-down shown when a Location/Platform breakdown row is expanded —
+// exactly "source, buy price, sold price, profit" per car, one clean table.
+function CarsSubTable({ cars, cap }) {
+  if (!cars.length) return <p style={{ fontSize: 12, color: 'var(--text3)', padding: '10px 0' }}>No cars in the current filter.</p>;
+  const shown = cars.slice(0, cap);
+  return (
+    <div style={{ paddingTop: 10 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+        <thead>
+          <tr style={{ textAlign: 'left' }}>
+            <th style={{ padding: '5px 8px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Vehicle</th>
+            <th style={{ padding: '5px 8px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>VIN</th>
+            <th style={{ padding: '5px 8px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Source</th>
+            <th style={{ padding: '5px 8px', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Buy Price</th>
+            <th style={{ padding: '5px 8px', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Sold Price</th>
+            <th style={{ padding: '5px 8px', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map(r => {
+            const meta = metaFor(r.buySource);
+            return (
+              <tr key={r.vin} style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={{ padding: '6px 8px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
+                <td style={{ padding: '6px 8px', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{r.vin}</td>
+                <td style={{ padding: '6px 8px', color: meta.color, fontWeight: 600 }}>{r.buySource}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.buyCost)}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.salePrice)}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 800, color: r.profit >= 0 ? GREEN : RED }}>{fmt(r.profit)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {cars.length > cap && (
+        <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+          Showing top {cap} of {cars.length} by profit — narrow with the filter bar above to see the rest.
+        </p>
+      )}
+    </div>
+  );
+}
 function PageBtn({ children, onClick, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled}
