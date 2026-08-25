@@ -2,18 +2,20 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
-import { LayoutDashboard, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut, Trophy, DollarSign } from 'lucide-react';
+import { LayoutDashboard, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut, Trophy, DollarSign, Sparkles } from 'lucide-react';
 
+// Ordered by priority, per the user's call — the money tabs (what to go
+// sell today, then profit) come first; Overview is the least-urgent
+// summary view, so it goes last.
 const NAV = [
-  { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview',              color:'#6366f1' },
-  { id:'activity',   icon:<Calendar size={15}/>,        label:'Activity',              color:'#0ea5e9' },
   { id:'profit',     icon:<DollarSign size={15}/>,      label:'Profit',                color:'#16a34a' },
+  { id:'activity',   icon:<Calendar size={15}/>,        label:'Activity',              color:'#0ea5e9' },
   { id:'crossmatch', icon:<GitMerge size={15}/>,        label:'Cross-Match VINs',      color:'#8b5cf6' },
   { id:'titles',     icon:<FileCheck size={15}/>,       label:'Title Status',          color:'#f59e0b' },
   { id:'carmax',     icon:<Car size={15}/>,             label:'CarMax',                color:'#ef4444' },
   { id:'vmv',        icon:<Car size={15}/>,             label:'Value My Vehicle',      color:'#ec4899' },
-  { id:'backlots',   icon:<Trophy size={15}/>,          label:"Today's Opportunities", color:'#eab308' },
   { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant',          color:'#06b6d4' },
+  { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview',              color:'#6366f1' },
 ];
 
 // hex -> rgba, for tinted backgrounds/borders per nav color above
@@ -65,6 +67,31 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
         </div>
       </div>
 
+      {/* Today's Opportunities — the highest-priority tab, called out as
+          its own eye-catching CTA above the regular nav list rather than
+          buried as just another row. */}
+      <div style={{ padding:'12px 9px 2px' }}>
+        <button onClick={() => onNav('backlots')}
+          style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', borderRadius:10,
+            border: page==='backlots' && !active ? '1px solid rgba(250,204,21,0.55)' : '1px solid rgba(234,179,8,0.35)',
+            background: page==='backlots' && !active
+              ? 'linear-gradient(135deg, rgba(250,204,21,0.32), rgba(234,179,8,0.14))'
+              : 'linear-gradient(135deg, rgba(234,179,8,0.20), rgba(234,179,8,0.07))',
+            cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(250,204,21,0.32), rgba(234,179,8,0.14))'; }}
+          onMouseLeave={e => { if (!(page==='backlots' && !active)) e.currentTarget.style.background = 'linear-gradient(135deg, rgba(234,179,8,0.20), rgba(234,179,8,0.07))'; }}
+        >
+          <span style={{ width:32, height:32, borderRadius:9, background:'rgba(250,204,21,0.22)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Trophy size={16} color="#fde047"/>
+          </span>
+          <span style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:11.5, fontWeight:800, letterSpacing:'0.3px', color:'#fde047', textTransform:'uppercase', whiteSpace:'nowrap' }}>Today's Opportunities</div>
+            <div style={{ fontSize:9.5, color:'#eab308', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Profitable cars to grab today</div>
+          </span>
+          <Sparkles size={13} color="#fde047" style={{ flexShrink:0 }}/>
+        </button>
+      </div>
+
       {/* Main nav */}
       <nav style={{ padding:'10px 7px 0' }}>
         <Lbl>Dashboard</Lbl>
@@ -108,9 +135,9 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
           return (
             <button key={sheet.label}
               onClick={() => onNav('sheet', sheet.label)}
-              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px 8px 8px', border:'none', borderLeft: isActive?`3px solid ${meta.color}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: isActive?`${meta.color}22`:'transparent', color: isActive?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: isActive?800:600, letterSpacing:'0.3px', cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background=SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
-              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px 8px 8px', border:'none', borderLeft: isActive?`3px solid ${meta.color}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: isActive?`${meta.color}24`:(meta.color?`${meta.color}10`:'transparent'), color: isActive?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: isActive?800:600, letterSpacing:'0.3px', cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background=meta.color?`${meta.color}1c`:SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
+              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background=meta.color?`${meta.color}10`:'transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
             >
               <Circle size={8} fill={meta.color} color={meta.color} style={{ flexShrink:0 }}/>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textTransform:'uppercase' }}>{sheet.label}</span>
@@ -144,11 +171,14 @@ function Lbl({ children }) {
 }
 function Btn({ active, color, onClick, children }) {
   const c = color || SB_ACCENT;
+  const rest = hexToRgba(c, 0.09);
+  const hover = hexToRgba(c, 0.16);
+  const on = hexToRgba(c, 0.22);
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px 7px 8px', border:'none', borderLeft: active?`3px solid ${c}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: active?hexToRgba(c, 0.14):'transparent', color: active?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: active?800:600, letterSpacing:'0.2px', cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
-      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px 7px 8px', border:'none', borderLeft: active?`3px solid ${c}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: active?on:rest, color: active?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: active?800:600, letterSpacing:'0.2px', cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=hover; e.currentTarget.style.color=SB_TEXT; }}}
+      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background=rest; e.currentTarget.style.color=SB_TEXT2; }}}
     >
       {children}
     </button>

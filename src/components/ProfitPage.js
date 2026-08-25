@@ -475,7 +475,7 @@ export default function ProfitPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
-              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+              <tr style={{ background: '#6366f114', textAlign: 'left' }}>
                 <Th></Th>
                 <Th>Platform</Th>
                 <Th align="right">Cars</Th>
@@ -568,7 +568,7 @@ export default function ProfitPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
-              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+              <tr style={{ background: '#0ea5e914', textAlign: 'left' }}>
                 <Th></Th>
                 <Th>Location</Th>
                 <Th align="right">Cars</Th>
@@ -625,7 +625,7 @@ export default function ProfitPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
               <thead>
-                <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <tr style={{ background: '#ef444414', textAlign: 'left' }}>
                   <Th></Th>
                   <Th>Vehicle</Th>
                   <Th>VIN</Th>
@@ -704,7 +704,7 @@ export default function ProfitPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+              <tr style={{ background: '#16a34a14', textAlign: 'left' }}>
                 <Th></Th>
                 <SortTh k="vehicle" label="Vehicle" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vehicle" /></SortTh>
                 <SortTh k="vin" label="VIN" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vin" /></SortTh>
@@ -807,7 +807,7 @@ export default function ProfitPage() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, opacity: 0.85 }}>
                 <thead>
-                  <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                  <tr style={{ background: '#f59e0b14', textAlign: 'left' }}>
                     <Th>Vehicle</Th>
                     <Th>VIN</Th>
                     <Th align="right">Mileage</Th>
@@ -969,12 +969,15 @@ function Card({ title, subtitle, headerExtra, children }) {
 // once and you click whichever one you actually want to look at, instead
 // of scrolling past 4 huge tables to find the one you want.
 function CollapsibleCard({ id, accent, icon, title, subtitle, summary, headerExtra, open, onToggle, children }) {
+  const restBg  = `${accent}0c`;
+  const openBg  = `${accent}14`;
+  const hoverBg = `${accent}1c`;
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 13, boxShadow: 'var(--shadow-sm)', textAlign: 'left', overflow: 'hidden', borderLeft: `3px solid ${open ? accent : 'var(--border)'}`, transition: 'border-color 0.15s' }}>
+    <div style={{ background: 'var(--card)', border: `1px solid ${accent}30`, borderRadius: 13, boxShadow: 'var(--shadow-sm)', textAlign: 'left', overflow: 'hidden', borderLeft: `4px solid ${accent}`, transition: 'border-color 0.15s' }}>
       <div onClick={() => onToggle(id)}
-        style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
-        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, background: open ? openBg : restBg, transition: 'background 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.background = hoverBg}
+        onMouseLeave={e => e.currentTarget.style.background = open ? openBg : restBg}
       >
         {open ? <ChevronDown size={16} color={accent} style={{ flexShrink: 0 }} /> : <ChevronRight size={16} color="var(--text3)" style={{ flexShrink: 0 }} />}
         {icon}
