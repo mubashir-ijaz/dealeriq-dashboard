@@ -5,6 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META } from '../utils/schema';
 import { parseAnyDate } from '../utils/dateFilter';
+import useSoldByVin from '../hooks/useSoldByVin';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -26,6 +27,7 @@ const PREVIEW_COUNT = 5; // cars shown when collapsed
 
 export default function Activity() {
   const { sheets, normalized } = useData();
+  const soldByVin = useSoldByVin();
 
   // Top-level KPIs across all sources
   const allRows = useMemo(() => {
@@ -143,6 +145,7 @@ export default function Activity() {
           key={sheet.label}
           sheet={sheet}
           rows={normalized[sheet.label] || []}
+          soldByVin={soldByVin}
         />
       ))}
     </div>
@@ -151,11 +154,18 @@ export default function Activity() {
 
 
 // ─── Source Section ────────────────────────────────────────────────────
-function SourceSection({ sheet, rows }) {
+function SourceSection({ sheet, rows: baseRows, soldByVin }) {
   const meta = SOURCE_META[sheet.source] || {};
   const [expanded, setExpanded] = useState(false);
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+
+  // Join in Manheim sold/profit info by VIN — additive only, cars that
+  // haven't sold yet are completely unaffected.
+  const rows = useMemo(() => baseRows.map(r => {
+    const sold = soldByVin[String(r.vin || '').trim().toUpperCase()];
+    return sold ? { ...r, sold: true, soldPrice: sold.salePrice, soldProfit: sold.profit, soldDaysHeld: sold.daysHeld, soldDate: sold.saleDate } : r;
+  }), [baseRows, soldByVin]);
 
   // Stats for this source
   const stats = useMemo(() => {
@@ -163,7 +173,8 @@ function SourceSection({ sheet, rows }) {
     const spend = rows.reduce((s,r) => s + (Number(r.totalCost) || Number(r.price) || 0), 0);
     const avg   = count ? spend / count : 0;
     const max   = rows.reduce((m,r) => Math.max(m, Number(r.totalCost) || Number(r.price) || 0), 0);
-    return { count, spend, avg, max };
+    const soldCount = rows.filter(r => r.sold).length;
+    return { count, spend, avg, max, soldCount };
   }, [rows]);
 
   // Sort rows
@@ -237,11 +248,12 @@ function SourceSection({ sheet, rows }) {
         </div>
 
         {/* Stats pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
           <Pill label="Total Spent" value={fmt(stats.spend)} accent={meta.color} />
           <Pill label="Avg Price"   value={fmt(stats.avg)}   accent={meta.color} />
           <Pill label="Max Price"   value={fmt(stats.max)}   accent={meta.color} />
           <Pill label="Cars"        value={fmtN(stats.count)} accent={meta.color} />
+          <Pill label="Sold (Manheim)" value={fmtN(stats.soldCount)} accent="#8b5cf6" />
         </div>
       </div>
 
@@ -260,6 +272,7 @@ function SourceSection({ sheet, rows }) {
               <Th onClick={() => toggleSort('model')}>Model <SortIcon k="model" /></Th>
               <Th onClick={() => toggleSort('price')} align="right">Price <SortIcon k="price" /></Th>
               <Th onClick={() => toggleSort('status')}>Status <SortIcon k="status" /></Th>
+              <Th>Sold (Manheim)</Th>
             </tr>
           </thead>
           <tbody>
@@ -284,6 +297,15 @@ function SourceSection({ sheet, rows }) {
                 <Td>{r.model}</Td>
                 <Td align="right" mono>{fmt(r.totalCost || r.price)}</Td>
                 <Td>{r.status}</Td>
+                <td style={{ padding: '9px 12px' }}>
+                  {r.sold ? (
+                    <span title={`Sold ${r.soldDate} for ${fmt(r.soldPrice)}`}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: r.soldProfit >= 0 ? '#10b981' : '#ef4444' }}>
+                      <DollarSign size={11} />{r.soldProfit >= 0 ? '+' : ''}{fmt(r.soldProfit)}
+                      {r.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· {r.soldDaysHeld}d</span>}
+                    </span>
+                  ) : <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -5,12 +5,12 @@
 // Parameterized by sheetLabel/source/itemLabel so CarMax and Value My
 // Vehicle (both title-tracked CarMax-schema sources) can share one
 // implementation instead of two near-identical copies.
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META, parseDate, formatAge } from '../utils/schema';
 import { filterByAge } from '../utils/ageFilter';
 import { exportRowsToExcel } from '../utils/exportExcel';
-import { fetchProfitSheet } from '../utils/sheets';
+import useSoldByVin from '../hooks/useSoldByVin';
 import CarDetailModal from './CarDetailModal';
 import AgeFilter from './AgeFilter';
 import { Search, ChevronUp, ChevronDown, ImageOff, Download, LayoutGrid, List, AlertTriangle, CheckCircle, HelpCircle, DollarSign } from 'lucide-react';
@@ -69,29 +69,11 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
   const meta = SOURCE_META[source];
   const baseRows = useMemo(() => normalized[sheetLabel] || [], [normalized, sheetLabel]);
 
-  // Sold info (Manheim profit match) — fetched once, joined onto rows by
-  // VIN below. A car that shows up here was bought (this tab) AND has since
-  // sold at Manheim; everything else on the page still works exactly the
-  // same for cars that haven't sold yet (soldInfo is just undefined for them).
-  const [soldByVin, setSoldByVin] = useState({});
-  useEffect(() => {
-    let cancelled = false;
-    fetchProfitSheet().then(profitRows => {
-      if (cancelled) return;
-      const map = {};
-      profitRows.forEach(r => {
-        if (r.Matched !== 'Yes' || !r.VIN) return;
-        map[String(r.VIN).trim().toUpperCase()] = {
-          salePrice: Number(r.Sale_Price) || 0,
-          profit: Number(r.Profit) || 0,
-          daysHeld: r.Days_Held !== '' ? Number(r.Days_Held) : null,
-          saleDate: r.Sale_Date || '',
-        };
-      });
-      setSoldByVin(map);
-    });
-    return () => { cancelled = true; };
-  }, []);
+  // Sold info (Manheim profit match) — joined onto rows by VIN below. A car
+  // that shows up here was bought (this tab) AND has since sold at Manheim;
+  // everything else on the page still works exactly the same for cars that
+  // haven't sold yet (soldInfo is just undefined for them).
+  const soldByVin = useSoldByVin();
 
   const rows = useMemo(() => baseRows.map(r => {
     const sold = soldByVin[String(r.vin || '').trim().toUpperCase()];
