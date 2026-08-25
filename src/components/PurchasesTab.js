@@ -5,14 +5,15 @@
 // Parameterized by sheetLabel/source/itemLabel so CarMax and Value My
 // Vehicle (both title-tracked CarMax-schema sources) can share one
 // implementation instead of two near-identical copies.
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { SOURCE_META, parseDate, formatAge } from '../utils/schema';
 import { filterByAge } from '../utils/ageFilter';
 import { exportRowsToExcel } from '../utils/exportExcel';
+import { fetchProfitSheet } from '../utils/sheets';
 import CarDetailModal from './CarDetailModal';
 import AgeFilter from './AgeFilter';
-import { Search, ChevronUp, ChevronDown, ImageOff, Download, LayoutGrid, List, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
+import { Search, ChevronUp, ChevronDown, ImageOff, Download, LayoutGrid, List, AlertTriangle, CheckCircle, HelpCircle, DollarSign } from 'lucide-react';
 
 const PAGE_SIZE = 50;
 
@@ -39,6 +40,11 @@ const EXPORT_COLUMNS = [
   { key: 'buyer',       header: 'Purchaser' },
   { key: 'titleStatus', header: 'Title Status' },
   { key: 'stockNo',     header: 'Stock #' },
+  { key: 'sold',        header: 'Sold at Manheim' },
+  { key: 'soldDate',    header: 'Sold Date' },
+  { key: 'soldPrice',   header: 'Sold Price' },
+  { key: 'soldProfit',  header: 'Profit' },
+  { key: 'soldDaysHeld', header: 'Days Held' },
 ];
 
 const TABLE_COLUMNS = [
@@ -54,10 +60,44 @@ const DETAIL_FIELDS = [
   ['payType', 'Pay Type'], ['titleStatus', 'Title Status'], ['stockNo', 'Stock #'], ['announcements', 'Announcements'],
 ];
 
+const SOLD_DETAIL_FIELDS = [
+  ['soldDate', 'Sold Date (Manheim)'], ['soldPrice', 'Sold Price'], ['soldProfit', 'Profit'], ['soldDaysHeld', 'Days Held'],
+];
+
 export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
   const { normalized } = useData();
   const meta = SOURCE_META[source];
-  const rows = useMemo(() => normalized[sheetLabel] || [], [normalized, sheetLabel]);
+  const baseRows = useMemo(() => normalized[sheetLabel] || [], [normalized, sheetLabel]);
+
+  // Sold info (Manheim profit match) — fetched once, joined onto rows by
+  // VIN below. A car that shows up here was bought (this tab) AND has since
+  // sold at Manheim; everything else on the page still works exactly the
+  // same for cars that haven't sold yet (soldInfo is just undefined for them).
+  const [soldByVin, setSoldByVin] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    fetchProfitSheet().then(profitRows => {
+      if (cancelled) return;
+      const map = {};
+      profitRows.forEach(r => {
+        if (r.Matched !== 'Yes' || !r.VIN) return;
+        map[String(r.VIN).trim().toUpperCase()] = {
+          salePrice: Number(r.Sale_Price) || 0,
+          profit: Number(r.Profit) || 0,
+          daysHeld: r.Days_Held !== '' ? Number(r.Days_Held) : null,
+          saleDate: r.Sale_Date || '',
+        };
+      });
+      setSoldByVin(map);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const rows = useMemo(() => baseRows.map(r => {
+    const sold = soldByVin[String(r.vin || '').trim().toUpperCase()];
+    return sold ? { ...r, sold: true, soldPrice: sold.salePrice, soldProfit: sold.profit, soldDaysHeld: sold.daysHeld, soldDate: sold.saleDate } : r;
+  }), [baseRows, soldByVin]);
+  const soldCount = useMemo(() => rows.filter(r => r.sold).length, [rows]);
 
   const [statusFilter, setStatusFilter] = useState('Unavailable');
   const [ageFilter, setAgeFilter] = useState('all');
@@ -129,7 +169,7 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: '2px solid var(--text3)', borderRadius: 12, padding: '16px 20px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontSize: 28, fontWeight: 800 }}>{rows.length}</div>
           <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Total {itemLabel} Vehicles</div>
@@ -141,6 +181,10 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: '2px solid #059669', borderRadius: 12, padding: '16px 20px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#059669' }}>{rows.filter(r => r.titleStatus === 'Available').length}</div>
           <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.8px' }}>✅ Title Available</div>
+        </div>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderTop: '2px solid #8b5cf6', borderRadius: 12, padding: '16px 20px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#8b5cf6' }}>{soldCount}</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.8px' }}>&#128176; Sold at Manheim</div>
         </div>
       </div>
 
@@ -202,6 +246,7 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
               <thead>
                 <tr>
                   <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 1 }}>Photo</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 1 }}>Sold</th>
                   {TABLE_COLUMNS.map(([key, label]) => (
                     <th key={key} onClick={() => handleSort(key)}
                       style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: sortCol === key ? meta.color : 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>
@@ -229,6 +274,7 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
                         : <div style={{ width: 60, height: 44, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImageOff size={14} color="var(--text3)" /></div>
                       }
                     </td>
+                    <td style={{ padding: '8px 12px' }}><SoldBadge r={r} /></td>
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', fontWeight: 600 }}>{r.vin || '—'}</td>
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)' }}>{r.year}</td>
                     <td style={{ padding: '8px 12px', fontWeight: 600 }}>{r.make}</td>
@@ -244,7 +290,7 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
                 ))}
                 {paged.length === 0 && (
                   <tr>
-                    <td colSpan={12} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+                    <td colSpan={13} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
                       No results{search ? ` for "${search}"` : ''}
                     </td>
                   </tr>
@@ -291,10 +337,16 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
             title={`${r.year || ''} ${r.make || ''} ${r.model || ''}`.trim() || `${itemLabel} vehicle`}
             subtitle={r.vin}
             badge={<TitleBadge status={r.titleStatus} />}
-            fields={DETAIL_FIELDS.map(([key, label]) => [label, key === 'totalCost' || key === 'price' || key === 'buyFee' || key === 'adminFee'
-              ? (r[key] ? '$' + Math.round(r[key]).toLocaleString() : '')
-              : key === 'age' ? formatAge(r.ageDays)
-              : (key === 'miles' ? (r[key] ? Number(r[key]).toLocaleString() : '') : r[key])])}
+            fields={[
+              ...DETAIL_FIELDS.map(([key, label]) => [label, key === 'totalCost' || key === 'price' || key === 'buyFee' || key === 'adminFee'
+                ? (r[key] ? '$' + Math.round(r[key]).toLocaleString() : '')
+                : key === 'age' ? formatAge(r.ageDays)
+                : (key === 'miles' ? (r[key] ? Number(r[key]).toLocaleString() : '') : r[key])]),
+              ...(r.sold ? SOLD_DETAIL_FIELDS.map(([key, label]) => [label, key === 'soldPrice' || key === 'soldProfit'
+                ? '$' + Math.round(r[key]).toLocaleString()
+                : key === 'soldDaysHeld' ? (r[key] !== null ? `${r[key]}d` : '')
+                : r[key]]) : []),
+            ]}
             accentColor={meta.color}
           />
         );
@@ -323,6 +375,22 @@ function TitleBadge({ status }) {
   );
 }
 
+// Shows nothing for a car that hasn't sold yet — the whole point is this is
+// additive, not a replacement for the rest of the row/card.
+function SoldBadge({ r }) {
+  if (!r.sold) return <span style={{ fontSize: 11, color: 'var(--text3)' }}>—</span>;
+  const profitColor = r.soldProfit >= 0 ? '#10b981' : '#ef4444';
+  return (
+    <span title={`Sold ${r.soldDate} for $${Math.round(r.soldPrice).toLocaleString()}`}
+      style={{ display: 'inline-flex', flexDirection: 'column', gap: 1, padding: '3px 9px', borderRadius: 8, background: `${profitColor}18`, border: `1px solid ${profitColor}55` }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 800, color: profitColor }}>
+        <DollarSign size={10} />{r.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(r.soldProfit).toLocaleString()}
+      </span>
+      {r.soldDaysHeld !== null && <span style={{ fontSize: 9.5, color: 'var(--text3)' }}>{r.soldDaysHeld}d held</span>}
+    </span>
+  );
+}
+
 function PurchasesGallery({ rows, meta, pageOffset = 0, onOpen }) {
   if (rows.length === 0) {
     return <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text3)', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12 }}>No results</div>;
@@ -343,6 +411,11 @@ function PurchasesGallery({ rows, meta, pageOffset = 0, onOpen }) {
               <div style={{ position: 'absolute', top: 8, right: 8 }}>
                 <TitleBadge status={r.titleStatus} />
               </div>
+              {r.sold && (
+                <div style={{ position: 'absolute', top: 8, left: 8, background: r.soldProfit >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 8 }}>
+                  SOLD &middot; {r.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(r.soldProfit).toLocaleString()}
+                </div>
+              )}
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${r.year} ${r.make} ${r.model}`}>
