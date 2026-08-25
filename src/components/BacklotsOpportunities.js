@@ -64,7 +64,10 @@ export default function BacklotsOpportunities() {
     }
     const listedDays = LISTED_FILTERS.find(f => f.id === listedFilter)?.days;
     if (listedDays) {
-      const cutoff = Date.now() - listedDays * 86400000;
+      // Calendar-day cutoff, not a rolling N*24h window — a car published
+      // yesterday evening shouldn't still count as "Today" just because
+      // fewer than 24 raw hours have elapsed since then.
+      const cutoff = startOfDay(Date.now()) - (listedDays - 1) * 86400000;
       rows = rows.filter(c => c.dateListed && c.dateListed >= cutoff);
     }
     const min = priceMin !== '' ? Number(priceMin) : null;
@@ -294,6 +297,12 @@ function GalleryGrid({ cars, onSelect }) {
                 <span style={{ color:'var(--text3)' }}>Profit</span>
                 <span style={{ fontFamily:'var(--mono)', fontWeight:800, color:'var(--green)' }}>{fmt$(car.profit)}</span>
               </div>
+              {car.shippingFee != null && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11.5 }}>
+                  <span style={{ color:'var(--text3)' }}>− Shipping (${Math.round(car.shippingFee).toLocaleString()}) =</span>
+                  <span style={{ fontFamily:'var(--mono)', fontWeight:800, color:'var(--green)' }}>{fmt$(car.netProfit)} net</span>
+                </div>
+              )}
 
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:6, borderTop:'1px solid var(--border)' }}>
                 <CarfaxBadge text={car.carfax} />
@@ -305,8 +314,13 @@ function GalleryGrid({ cars, onSelect }) {
               </div>
 
               {car.dateListed && (
+                <div style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)' }} title={formatPublished(car.dateListed)}>
+                  {formatPublished(car.dateListed)} ({daysAgo(car.dateListed)})
+                </div>
+              )}
+              {milesAway(car.distanceMiles) && (
                 <div style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)' }}>
-                  Listed {daysAgo(car.dateListed)}
+                  {milesAway(car.distanceMiles)}
                 </div>
               )}
 
@@ -330,7 +344,8 @@ function TableView({ cars, sortCol, sortDir, onSort, onSelect }) {
             <tr>
               {[
                 ['title','Car'], ['price','Price'], ['mmr','MMR'], ['jdProfit','JD Profit'],
-                ['profit','Profit'], ['mileage','Miles'], ['carfax','Carfax'],
+                ['profit','Profit'], ['netProfit','Net Profit'], ['mileage','Miles'],
+                ['distanceMiles','Away'], ['carfax','Carfax'],
                 ['dateListed','Listed'], ['damageNotes','Damage'],
               ].map(([col,label]) => (
                 <th key={col} onClick={() => onSort(col)}
@@ -357,11 +372,13 @@ function TableView({ cars, sortCol, sortDir, onSort, onSelect }) {
                   <td style={{ padding:'8px 12px', fontFamily:'var(--mono)' }}>{fmt$(car.mmr)}</td>
                   <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--purple)', fontWeight:700 }}>{fmt$(car.jdProfit)}</td>
                   <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--green)', fontWeight:700 }}>{fmt$(car.profit)}</td>
+                  <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--green)', fontWeight:700 }}>{car.netProfit != null ? fmt$(car.netProfit) : '—'}</td>
                   <td style={{ padding:'8px 12px', fontFamily:'var(--mono)' }}>{car.mileage ? car.mileage.toLocaleString() : ''}</td>
+                  <td style={{ padding:'8px 12px', fontFamily:'var(--mono)' }}>{car.distanceMiles != null ? `${Math.round(car.distanceMiles)} mi` : '—'}</td>
                   <td style={{ padding:'8px 12px' }}>
                     <CarfaxBadge text={car.carfax} />
                   </td>
-                  <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--text2)', whiteSpace:'nowrap' }}>
+                  <td style={{ padding:'8px 12px', fontFamily:'var(--mono)', color:'var(--text2)', whiteSpace:'nowrap' }} title={formatPublished(car.dateListed)}>
                     {car.dateListed ? daysAgo(car.dateListed) : '—'}
                   </td>
                   <td style={{ padding:'8px 12px', maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isClean ? 'var(--green)' : 'var(--text2)' }} title={car.damageNotes}>
@@ -407,11 +424,32 @@ function fmt$(n) {
   return '$' + Math.round(n).toLocaleString();
 }
 
+function startOfDay(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 function daysAgo(ms) {
-  const days = Math.floor((Date.now() - ms) / 86400000);
+  // Calendar-day difference, not raw elapsed hours / 24 — otherwise a
+  // car published at 11pm yesterday still reads "today" at 1am.
+  const days = Math.round((startOfDay(Date.now()) - startOfDay(ms)) / 86400000);
   if (days <= 0) return 'today';
   if (days === 1) return '1d ago';
   return `${days}d ago`;
+}
+
+function formatPublished(ms) {
+  if (!ms) return null;
+  const d = new Date(ms);
+  return 'Published ' +
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' at ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function milesAway(n) {
+  if (n === null || n === undefined || isNaN(n)) return null;
+  return `${Math.round(n).toLocaleString()} miles away`;
 }
 
 function CarDetailModal({ car, onClose }) {
@@ -438,13 +476,16 @@ function CarDetailModal({ car, onClose }) {
             <Field label="Price" value={fmt$(car.price)} />
             <Field label="MMR (After Grade)" value={fmt$(car.mmr)} />
             <Field label="Profit" value={fmt$(car.profit)} color="var(--green)" />
+            <Field label="Shipping Fee" value={car.shippingFee != null ? fmt$(car.shippingFee) : '—'} />
+            <Field label="Net Profit (after shipping)" value={car.netProfit != null ? fmt$(car.netProfit) : '—'} color="var(--green)" />
+            <Field label="Distance" value={milesAway(car.distanceMiles) || '—'} />
             <Field label="Galves" value={fmt$(car.galves)} />
             <Field label="JD Power" value={fmt$(car.jdPower)} />
             <Field label="JD Profit" value={fmt$(car.jdProfit)} color="var(--purple)" />
             <Field label="Mileage" value={car.mileage ? car.mileage.toLocaleString() : '—'} />
             <Field label="VIN" value={car.vin} mono />
             <Field label="Carfax Accidents" value={car.carfaxAccidents} />
-            <Field label="Listed" value={car.dateListed ? daysAgo(car.dateListed) : '—'} />
+            <Field label="Listed" value={car.dateListed ? formatPublished(car.dateListed) : '—'} />
           </div>
 
           <div>
