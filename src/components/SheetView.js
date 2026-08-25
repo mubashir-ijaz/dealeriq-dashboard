@@ -4,9 +4,10 @@ import { useData } from '../context/DataContext';
 import { SOURCE_META, parseDate, daysSince, formatAge } from '../utils/schema';
 import { filterByAge } from '../utils/ageFilter';
 import { exportRowsToExcel } from '../utils/exportExcel';
+import useSoldByVin from '../hooks/useSoldByVin';
 import CarDetailModal from './CarDetailModal';
 import AgeFilter from './AgeFilter';
-import { Search, ChevronUp, ChevronDown, ExternalLink, LayoutGrid, List, ImageOff, Download, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { Search, ChevronUp, ChevronDown, ExternalLink, LayoutGrid, List, ImageOff, Download, CheckCircle, AlertTriangle, HelpCircle, DollarSign, Clock3 } from 'lucide-react';
 
 const PAGE_SIZE = 50;
 
@@ -38,14 +39,26 @@ export default function SheetView({ label }) {
   const titleCol = TITLE_RAW_COLUMN[sheet?.source] && columns.includes(TITLE_RAW_COLUMN[sheet.source])
     ? TITLE_RAW_COLUMN[sheet.source] : null;
   const dateCol = findDateColumn(columns);
+  const vinCol  = pickCol(columns, [/^vin$/i, /vin/i]);
 
-  // Attach a computed age-in-days to each row (based on the detected date
-  // column) so the Car Age filter and Age column work on every sheet without
-  // needing a source-specific schema mapping.
+  // Sold info (Manheim profit match), same as PurchasesTab/Activity — every
+  // Data Source (Edge, CarMax, OpenLane, ADESA, Value My Vehicle) shows the
+  // same Sold/Waiting-to-sell status here since they all go through this view.
+  const soldByVin = useSoldByVin();
+
+  // Attach a computed age-in-days (based on the detected date column) and
+  // sold info (by VIN) to each row, so the Car Age filter/column and the
+  // Sold badge work on every sheet without a source-specific schema mapping.
   const rows = useMemo(() => {
-    if (!dateCol) return rawRows;
-    return rawRows.map(r => ({ ...r, ageDays: daysSince(r[dateCol]) }));
-  }, [rawRows, dateCol]);
+    return rawRows.map(r => {
+      const withAge = dateCol ? { ...r, ageDays: daysSince(r[dateCol]) } : r;
+      const vin = vinCol ? String(r[vinCol] || '').trim().toUpperCase() : '';
+      const sold = vin ? soldByVin[vin] : null;
+      return sold
+        ? { ...withAge, sold: true, soldPrice: sold.salePrice, soldProfit: sold.profit, soldDaysHeld: sold.daysHeld, soldDate: sold.saleDate }
+        : withAge;
+    });
+  }, [rawRows, dateCol, vinCol, soldByVin]);
 
   const [search,  setSearch]  = useState('');
   const [sortCol, setSortCol] = useState(() => dateCol);
@@ -230,6 +243,11 @@ export default function SheetView({ label }) {
                     </span>
                   </th>
                 )}
+                {vinCol && (
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1 }}>
+                    Sold (Manheim)
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -267,11 +285,26 @@ export default function SheetView({ label }) {
                       {formatAge(row.ageDays)}
                     </td>
                   )}
+                  {vinCol && (
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      {row.sold ? (
+                        <span title={`Sold ${row.soldDate} for $${Math.round(row.soldPrice).toLocaleString()}`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: row.soldProfit >= 0 ? '#10b981' : '#ef4444' }}>
+                          <DollarSign size={11} />{row.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(row.soldProfit).toLocaleString()}
+                          {row.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· {row.soldDaysHeld}d</span>}
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text3)' }}>
+                          <Clock3 size={10} /> Waiting to sell
+                        </span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
               {paged.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + (dateCol ? 1 : 0)} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+                  <td colSpan={columns.length + (dateCol ? 1 : 0) + (vinCol ? 1 : 0)} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
                     No results for "{search}"
                   </td>
                 </tr>
@@ -319,7 +352,13 @@ export default function SheetView({ label }) {
             title={card.title || label}
             subtitle={card.vin}
             badge={titleCol && row[titleCol] ? <StatusBadgeSmall status={row[titleCol]} /> : null}
-            fields={buildDetailFields(row, columns)}
+            fields={[
+              ...buildDetailFields(row, columns),
+              ...(row.sold
+                ? [['Sold at Manheim', row.soldDate], ['Sold Price', '$' + Math.round(row.soldPrice).toLocaleString()],
+                   ['Profit', '$' + Math.round(row.soldProfit).toLocaleString()], ['Days Held', row.soldDaysHeld !== null ? `${row.soldDaysHeld}d` : '']]
+                : [['Sold at Manheim', 'Waiting to sell']]),
+            ]}
             link={card.link}
             accentColor={meta.color}
           />
@@ -386,16 +425,44 @@ function galleryCard(row, columns) {
   const imageCol = columns.find(c => /image/i.test(c) && String(row[c] || '').startsWith('http'));
   const linkCol  = pickCol(columns, [/detail/i, /invoice/i, /url/i], imageCol)
                     || columns.find(c => c !== imageCol && String(row[c] || '').startsWith('http'));
-  const titleCol = pickCol(columns, [/^vehicle$/i, /vehicle|model/i]);
   const vinCol    = pickCol(columns, [/^vin$/i, /vin/i]);
-  const dateCol   = pickCol(columns, [/purchase date|sale date|invoice date/i, /date/i]);
-  const priceCol  = pickCol(columns, [/balance due|pre-tax total/i, /price|cost|total/i]);
-  const sellerCol = pickCol(columns, [/seller company/i, /seller|location/i]);
+  const dateCol   = pickCol(columns, [/purchase date|sale date|invoice date/i, /date|purchased/i]);
+  // Ordered MOST-SPECIFIC-first, one exact real-cost column name per source,
+  // before any generic fallback. Confirmed live 2026-08-25: the old list
+  // ended in a bare /price|cost|total/i, which matched "Buyer Charge Total"
+  // (Edge's fee column, ~$700) before ever reaching "Total Cost" or "Price"
+  // — since pickCol takes the first COLUMN-ORDER match for whichever
+  // pattern is tried, and "Buyer Charge Total" sits earlier in the sheet
+  // than either. That made Edge's gallery cards show the fee as if it were
+  // the whole purchase price. No pattern below can match a fee/charge
+  // column by accident.
+  const priceCol  = pickCol(columns, [
+    /balance due|pre-tax total/i,   // OpenLane
+    /^total cost$/i,                 // Edge
+    /^cm_total_cost$/i,              // CarMax / Value My Vehicle
+    /^total$/i,                      // CarMax / Value My Vehicle
+    /^total amount$/i,               // ADESA
+    /^selling_price$/i,              // CarMax / Value My Vehicle fallback
+    /^price$/i,                      // Edge fallback
+    /price|cost/i,                   // last-resort generic (never matches a bare "...Total" fee column)
+  ]);
+  const sellerCol = pickCol(columns, [/seller company/i, /cm_location/i, /pickup location/i, /auction name/i, /seller|location/i]);
+
+  // A full "Year Make Model" descriptive string, when the sheet has one
+  // (CarMax's CM_Vehicle, OpenLane's Vehicle) — otherwise build it from
+  // separate Year/Make/Model columns (Edge, ADESA).
+  const vehicleCol = pickCol(columns, [/^vehicle$/i, /^cm_vehicle$/i]);
+  const yearCol  = pickCol(columns, [/^year$/i]);
+  const makeCol  = pickCol(columns, [/^make$/i]);
+  const modelCol = pickCol(columns, [/^model$/i]);
+  const title = (vehicleCol && row[vehicleCol])
+    ? row[vehicleCol]
+    : [yearCol && row[yearCol], makeCol && row[makeCol], modelCol && row[modelCol]].filter(Boolean).join(' ');
 
   return {
     image:  imageCol ? row[imageCol]  : '',
     link:   linkCol  ? row[linkCol]   : '',
-    title:  titleCol ? row[titleCol]  : '',
+    title,
     vin:    vinCol   ? row[vinCol]    : '',
     date:   dateCol  ? row[dateCol]   : '',
     price:  priceCol ? row[priceCol]  : '',
@@ -428,19 +495,34 @@ function GalleryGrid({ rows, columns, meta, source, pageOffset = 0, onOpen }) {
                   <StatusBadgeSmall status={status} />
                 </div>
               )}
+              {row.sold && (
+                <div style={{ position: 'absolute', top: 8, left: 8, background: row.soldProfit >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 8 }}>
+                  SOLD &middot; {row.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(row.soldProfit).toLocaleString()}
+                </div>
+              )}
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.title}>{c.title || '—'}</div>
               {c.vin && <div style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{c.vin}</div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                 <span style={{ color: 'var(--text3)' }}>{c.date || ''}</span>
-                <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--green)' }}>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--green)' }} title="Buy price">
                   {!isNaN(priceNum) && c.price ? '$' + priceNum.toLocaleString() : ''}
                 </span>
               </div>
               {row.ageDays !== undefined && (
                 <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: row.ageDays >= 30 ? '#ef4444' : 'var(--text3)', fontWeight: row.ageDays >= 30 ? 700 : 400 }}>
                   Age: {formatAge(row.ageDays)}
+                </div>
+              )}
+              {row.sold ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontFamily: 'var(--mono)', color: row.soldProfit >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                  <DollarSign size={10} /> Sold {row.soldDate} for {'$' + Math.round(row.soldPrice).toLocaleString()}
+                  {row.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>({row.soldDaysHeld}d held)</span>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: 'var(--text3)' }}>
+                  <Clock3 size={10} /> Waiting to sell
                 </div>
               )}
               {c.seller && (
