@@ -25,6 +25,17 @@ function hexToRgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// The sidebar is deliberately its own dark panel (professional CRM look —
+// dark nav rail, light content area) so it uses its own local color tokens
+// instead of the app's light-theme CSS variables.
+const SB_BG     = '#0a0a10';
+const SB_BORDER = 'rgba(255,255,255,0.08)';
+const SB_TEXT   = '#f5f6fa';
+const SB_TEXT2  = '#b6bac8';
+const SB_TEXT3  = '#787d8f';
+const SB_HOVER  = 'rgba(255,255,255,0.06)';
+const SB_ACCENT = '#818cf8';
+
 export default function Sidebar({ page, active, onNav, onLogout }) {
   const { sheets, stats, crossMatch, normalized } = useData();
   const grand = stats.reduce((s,x) => s+x.count, 0);
@@ -42,15 +53,15 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
   const vmvTitleIssues = (normalized['Value My Vehicle'] || []).filter(r => r.titleStatus === 'Unavailable').length;
 
   return (
-    <aside style={{ width:220, minWidth:220, background:'var(--bg2)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', boxShadow:'var(--shadow-sm)', zIndex:2 }}>
+    <aside style={{ width:236, minWidth:236, background:SB_BG, borderRight:`1px solid ${SB_BORDER}`, display:'flex', flexDirection:'column', boxShadow:'2px 0 12px rgba(0,0,0,0.25)', zIndex:2 }}>
       {/* Logo */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 14px 13px', borderBottom:'1px solid var(--border)' }}>
-        <div style={{ width:34, height:34, borderRadius:9, background:'rgba(79,70,229,0.1)', border:'1px solid rgba(79,70,229,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Car size={17} color="var(--accent)"/>
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 14px 13px', borderBottom:`1px solid ${SB_BORDER}` }}>
+        <div style={{ width:34, height:34, borderRadius:9, background:'rgba(129,140,248,0.16)', border:'1px solid rgba(129,140,248,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Car size={17} color={SB_ACCENT}/>
         </div>
         <div>
-          <div style={{ fontSize:16, fontWeight:800, letterSpacing:'-0.3px' }}>DealerIQ</div>
-          <div style={{ fontSize:9, color:'var(--text3)', letterSpacing:'1.5px', textTransform:'uppercase' }}>Major Auto Sales</div>
+          <div style={{ fontSize:16, fontWeight:800, letterSpacing:'-0.3px', color:SB_TEXT }}>DealerIQ</div>
+          <div style={{ fontSize:9, color:SB_TEXT3, letterSpacing:'1.5px', textTransform:'uppercase' }}>Major Auto Sales</div>
         </div>
       </div>
 
@@ -59,25 +70,27 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
         <Lbl>Dashboard</Lbl>
         {NAV.map(n => (
           <Btn key={n.id} active={page===n.id && !active} color={n.color} onClick={()=>onNav(n.id)}>
-            {n.icon}
-            <span style={{ flex:1 }}>{n.label}</span>
+            <span style={{ width:26, height:26, borderRadius:7, background:hexToRgba(n.color,0.16), display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              {n.icon}
+            </span>
+            <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{n.label}</span>
             {n.id === 'crossmatch' && crossMatch.matched.length > 0 && (
-              <span style={{ fontSize:10, background:'rgba(139,92,246,0.2)', color:'var(--purple)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
+              <span style={{ fontSize:10, background:'rgba(139,92,246,0.22)', color:'#a78bfa', padding:'1px 7px', borderRadius:10, fontWeight:700, flexShrink:0 }}>
                 {crossMatch.matched.length}
               </span>
             )}
             {n.id === 'titles' && titleAlerts > 0 && (
-              <span style={{ fontSize:10, background:'rgba(239,68,68,0.2)', color:'var(--red)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
+              <span style={{ fontSize:10, background:'rgba(248,113,113,0.22)', color:'#f87171', padding:'1px 7px', borderRadius:10, fontWeight:700, flexShrink:0 }}>
                 {titleAlerts}
               </span>
             )}
             {n.id === 'carmax' && carmaxTitleIssues > 0 && (
-              <span style={{ fontSize:10, background:'rgba(239,68,68,0.2)', color:'var(--red)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
+              <span style={{ fontSize:10, background:'rgba(248,113,113,0.22)', color:'#f87171', padding:'1px 7px', borderRadius:10, fontWeight:700, flexShrink:0 }}>
                 {carmaxTitleIssues}
               </span>
             )}
             {n.id === 'vmv' && vmvTitleIssues > 0 && (
-              <span style={{ fontSize:10, background:'rgba(239,68,68,0.2)', color:'var(--red)', padding:'1px 7px', borderRadius:10, fontWeight:700 }}>
+              <span style={{ fontSize:10, background:'rgba(248,113,113,0.22)', color:'#f87171', padding:'1px 7px', borderRadius:10, fontWeight:700, flexShrink:0 }}>
                 {vmvTitleIssues}
               </span>
             )}
@@ -95,29 +108,29 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
           return (
             <button key={sheet.label}
               onClick={() => onNav('sheet', sheet.label)}
-              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}18`:'transparent', color: meta.color || 'var(--text2)', fontSize:12, fontWeight: isActive?700:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background='var(--hover)'; }}}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}22`:'transparent', color: meta.color || SB_TEXT2, fontSize:12, fontWeight: isActive?700:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background=SB_HOVER; }}}
               onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; }}}
             >
               <Circle size={8} fill={meta.color} color={meta.color} style={{ flexShrink:0 }}/>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sheet.label}</span>
-              {stat && <span style={{ fontSize:10, color:'var(--text3)', fontFamily:'var(--mono)', flexShrink:0 }}>{stat.count.toLocaleString()}</span>}
+              {stat && <span style={{ fontSize:10, color:SB_TEXT3, fontFamily:'var(--mono)', flexShrink:0 }}>{stat.count.toLocaleString()}</span>}
             </button>
           );
         })}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding:'13px 14px', borderTop:'1px solid var(--border)' }}>
-        <div style={{ fontSize:11, color:'var(--text3)', lineHeight:1.9, marginBottom:10 }}>
-          <span style={{ color:'var(--accent)', fontWeight:800, fontSize:20 }}>{grand.toLocaleString()}</span>
-          <span style={{ display:'block' }}>vehicles in period</span>
+      <div style={{ padding:'13px 14px', borderTop:`1px solid ${SB_BORDER}` }}>
+        <div style={{ fontSize:11, color:SB_TEXT3, lineHeight:1.9, marginBottom:10 }}>
+          <span style={{ color:SB_ACCENT, fontWeight:800, fontSize:20 }}>{grand.toLocaleString()}</span>
+          <span style={{ display:'block', color:SB_TEXT2 }}>vehicles in period</span>
           <span style={{ fontSize:10 }}>{sheets.length} sources · live Google Sheets</span>
         </div>
         <button onClick={onLogout}
-          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 10px', border:'1px solid var(--border2)', borderRadius:8, background:'transparent', color:'var(--text2)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = 'transparent'; }}
+          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 10px', border:`1px solid ${SB_BORDER}`, borderRadius:8, background:'transparent', color:SB_TEXT2, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#f87171'; e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(248,113,113,0.1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = SB_BORDER; e.currentTarget.style.color = SB_TEXT2; e.currentTarget.style.background = 'transparent'; }}
         >
           <LogOut size={13} /> Log Out
         </button>
@@ -127,14 +140,14 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
 }
 
 function Lbl({ children }) {
-  return <div style={{ fontSize:9, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', padding:'3px 10px 5px' }}>{children}</div>;
+  return <div style={{ fontSize:9, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:SB_TEXT3, padding:'3px 10px 5px' }}>{children}</div>;
 }
 function Btn({ active, color, onClick, children }) {
-  const c = color || 'var(--accent)';
+  const c = color || SB_ACCENT;
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'9px 10px', border: active?`1px solid ${hexToRgba(color || '#4f46e5', 0.3)}`:'1px solid transparent', borderRadius:8, margin:'1px 2px', background: active?hexToRgba(color || '#4f46e5', 0.12):'transparent', color: c, fontSize:13, fontWeight: active?700:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=hexToRgba(color || '#4f46e5', 0.08); }}}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px', border: active?`1px solid ${hexToRgba(c, 0.35)}`:'1px solid transparent', borderRadius:8, margin:'1px 2px', background: active?hexToRgba(c, 0.15):'transparent', color: c, fontSize:13, fontWeight: active?700:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=SB_HOVER; }}}
       onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; }}}
     >
       {children}
