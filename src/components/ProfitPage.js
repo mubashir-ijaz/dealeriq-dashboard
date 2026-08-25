@@ -12,6 +12,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchProfitSheet, PROFIT_SHEET_ID } from '../utils/sheets';
 import { parseDate, SOURCE_META } from '../utils/schema';
 import { DATE_FILTERS, getDateCutoff } from '../utils/dateFilter';
+import { exportRowsToExcel } from '../utils/exportExcel';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LabelList,
@@ -20,8 +21,28 @@ import {
   DollarSign, TrendingUp, TrendingDown, MapPin, Search, ArrowUpDown,
   ArrowUp, ArrowDown, AlertTriangle, Trophy, Filter, X, Building2,
   ChevronDown, ChevronRight, ChevronsLeft, ChevronLeft, ChevronsRight,
-  Clock, TriangleAlert, Sparkles,
+  Clock, TriangleAlert, Sparkles, Download, ExternalLink,
 } from 'lucide-react';
+
+// Direct link to the live Profit tab (README is now the first tab of this
+// spreadsheet — landing there first is fine, it explains what everything is).
+const PROFIT_SHEET_URL = `https://docs.google.com/spreadsheets/d/${PROFIT_SHEET_ID}/edit`;
+
+const EXPORT_COLUMNS = [
+  { key: 'vehicle',    header: 'Vehicle' },
+  { key: 'vin',        header: 'VIN' },
+  { key: 'buySource',  header: 'Buy Platform' },
+  { key: 'buyLocation', header: 'Buy Location' },
+  { key: 'buyDate',    header: 'Buy Date' },
+  { key: 'buyCost',    header: 'Buy Cost' },
+  { key: 'saleDate',   header: 'Sale Date' },
+  { key: 'salePrice',  header: 'Sale Price' },
+  { key: 'profit',     header: 'Profit' },
+  { key: 'profitPct',  header: 'Profit %' },
+  { key: 'daysHeld',   header: 'Days Held' },
+  { key: 'titleStatus', header: 'Title Status' },
+  { key: 'matchType',  header: 'Match Type' },
+];
 
 const fmt   = n => '$' + Math.round(n || 0).toLocaleString();
 const fmtN  = n => (n || 0).toLocaleString();
@@ -66,6 +87,12 @@ export default function ProfitPage() {
   const [minLocationCars, setMinLocationCars] = useState(2);
   const [expandedLocations, setExpandedLocations] = useState(new Set());
   const [expandedPlatforms, setExpandedPlatforms] = useState(new Set());
+  const [expandedCars, setExpandedCars] = useState(new Set());
+  const toggleCarExpand = vin => setExpandedCars(prev => {
+    const next = new Set(prev);
+    if (next.has(vin)) next.delete(vin); else next.add(vin);
+    return next;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +114,10 @@ export default function ProfitPage() {
     buyCost:    num(r.Buy_Cost),
     saleDate:   r.Sale_Date || '',
     salePrice:  num(r.Sale_Price),
+    saleLocation: r.Sale_Location || '',
+    lane:       r.Lane || '',
+    channel:    r.Channel || '',
+    saleInvoiceStatus: r.Sale_Invoice_Status || '',
     profit:     num(r.Profit),
     profitPct:  num(r.Profit_Pct),
     daysHeld:   num(r.Days_Held),
@@ -303,10 +334,17 @@ export default function ProfitPage() {
           <Filter size={13} color="var(--text3)" />
           <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text3)' }}>Filter</span>
           {activeFilterCount > 0 && (
-            <button onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               <X size={12} /> Clear {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'}
             </button>
           )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExportBtn onClick={() => exportRowsToExcel(matched, EXPORT_COLUMNS, 'profit_all_matched')} label="Export All" />
+            <a href={PROFIT_SHEET_URL} target="_blank" rel="noreferrer"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text2)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              <ExternalLink size={12} /> View in Google Sheet
+            </a>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
@@ -418,7 +456,9 @@ export default function ProfitPage() {
       {/* Buying platform breakdown table — right below the charts, since
           this is the highest-value at-a-glance number: which platform to
           keep buying from. */}
-      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars.">
+      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars."
+        headerExtra={<ExportBtn onClick={() => exportRowsToExcel(byPlatform.map(p => ({ ...p, source: p.source })), [{ key: 'source', header: 'Platform' }, { key: 'count', header: 'Cars' }, { key: 'avgCost', header: 'Avg Buy Cost' }, { key: 'avgProfit', header: 'Avg Profit' }, { key: 'profit', header: 'Total Profit' }], 'profit_by_platform')} />}
+      >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
@@ -506,7 +546,9 @@ export default function ProfitPage() {
       </Card>
 
       {/* Location breakdown table — every location, unfiltered by the min-cars threshold */}
-      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden. Click a row to see the individual cars.">
+      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden. Click a row to see the individual cars."
+        headerExtra={<ExportBtn onClick={() => exportRowsToExcel(byLocationAll, [{ key: 'location', header: 'Location' }, { key: 'count', header: 'Cars' }, { key: 'avgCost', header: 'Avg Buy Cost' }, { key: 'avgProfit', header: 'Avg Profit' }, { key: 'profit', header: 'Total Profit' }], 'profit_by_location')} />}
+      >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
@@ -558,13 +600,15 @@ export default function ProfitPage() {
           that lost money AND sat a long time is the clearest problem signal. */}
       <Card
         title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><TriangleAlert size={15} color={RED} />Losing Cars</span>}
-        subtitle={`${losingCars.length.toLocaleString()} car${losingCars.length === 1 ? '' : 's'} sold below buy cost — worst loss first, with how long each sat before selling`}
+        subtitle={`${losingCars.length.toLocaleString()} car${losingCars.length === 1 ? '' : 's'} sold below buy cost — worst loss first, with how long each sat before selling. Click a row for full details.`}
+        headerExtra={<ExportBtn onClick={() => exportRowsToExcel(losingCars, EXPORT_COLUMNS, 'losing_cars')} />}
       >
         {losingCars.length === 0 ? <Empty text="No losing cars in this filter — nice." /> : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                  <Th></Th>
                   <Th>Vehicle</Th>
                   <Th>VIN</Th>
                   <Th>Platform</Th>
@@ -578,8 +622,16 @@ export default function ProfitPage() {
                 {losingCars.slice(0, LOSING_CAP).map(r => {
                   const meta = metaFor(r.buySource);
                   const heldLong = r.daysHeld !== null && r.daysHeld >= 90;
+                  const open = expandedCars.has(r.vin);
                   return (
-                    <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <React.Fragment key={r.vin}>
+                    <tr onClick={() => toggleCarExpand(r.vin)}
+                      style={{ borderBottom: open ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '8px 4px', width: 20 }}>
+                        {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+                      </td>
                       <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
                       <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
                       <td style={{ padding: '8px 10px', color: meta.color, fontWeight: 600 }}>{r.buySource}</td>
@@ -593,6 +645,14 @@ export default function ProfitPage() {
                         </span>
                       </td>
                     </tr>
+                    {open && (
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td colSpan={8} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
+                          <CarDetailPanel r={r} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -607,7 +667,9 @@ export default function ProfitPage() {
       </Card>
 
       {/* Most / least profitable cars — sortable, searchable, paginated */}
-      <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first. The ✦ icon marks a fuzzy (year/make/model/mileage) match — hover for details.">
+      <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first. The ✦ icon marks a fuzzy (year/make/model/mileage) match. Click a row for full details."
+        headerExtra={<ExportBtn onClick={() => exportRowsToExcel(tableFiltered, EXPORT_COLUMNS, 'matched_cars')} />}
+      >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', maxWidth: 320, flex: 1, minWidth: 220 }}>
             <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
@@ -622,6 +684,7 @@ export default function ProfitPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <Th></Th>
                 <SortTh k="vehicle" label="Vehicle" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vehicle" /></SortTh>
                 <SortTh k="vin" label="VIN" onClick={toggleSort} sortKey={sortKey}><SortIcon k="vin" /></SortTh>
                 <SortTh k="buySource" label="Platform" onClick={toggleSort} sortKey={sortKey}><SortIcon k="buySource" /></SortTh>
@@ -636,8 +699,16 @@ export default function ProfitPage() {
             <tbody>
               {pagedTable.map(r => {
                 const meta = metaFor(r.buySource);
+                const open = expandedCars.has(r.vin);
                 return (
-                  <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <React.Fragment key={r.vin}>
+                  <tr onClick={() => toggleCarExpand(r.vin)}
+                    style={{ borderBottom: open ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '8px 4px', width: 20 }}>
+                      {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+                    </td>
                     <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
                     <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -655,6 +726,14 @@ export default function ProfitPage() {
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{r.daysHeld ?? '—'}</td>
                     <td style={{ padding: '8px 10px', color: 'var(--text2)', fontSize: 11 }}>{r.saleDate}</td>
                   </tr>
+                  {open && (
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td colSpan={9} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
+                        <CarDetailPanel r={r} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -693,6 +772,7 @@ export default function ProfitPage() {
       <Card
         title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><AlertTriangle size={15} color="#f59e0b" />Couldn't Match ({unmatched.length.toLocaleString()})</span>}
         subtitle="Manheim-sold cars with no buy record in any of the 5 sources, even after fuzzy year/make/model/mileage matching. Usually the buy happened before that source's sheet started, or it was bought outside the 5 tracked platforms."
+        headerExtra={<ExportBtn onClick={() => exportRowsToExcel(unmatchedFiltered, [{ key: 'vehicle', header: 'Vehicle' }, { key: 'vin', header: 'VIN' }, { key: 'mileage', header: 'Mileage' }, { key: 'saleDate', header: 'Sale Date' }, { key: 'salePrice', header: 'Sale Price' }, { key: 'titleStatus', header: 'Title Status' }], 'unmatched_cars')} />}
       >
         <div style={{ position: 'relative', marginBottom: 12, maxWidth: 320 }}>
           <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
@@ -782,6 +862,42 @@ function CarsSubTable({ cars, cap }) {
           Showing top {cap} of {cars.length} by profit — narrow with the filter bar above to see the rest.
         </p>
       )}
+    </div>
+  );
+}
+function ExportBtn({ onClick, label = 'Export' }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.color = 'var(--text2)'; }}
+    >
+      <Download size={12} /> {label}
+    </button>
+  );
+}
+
+// Full detail shown when a car row is clicked in Losing Cars / All Matched
+// Cars — every field the Profit sheet has for that car, in one place.
+function CarDetailPanel({ r }) {
+  const fields = [
+    ['Buy Date', r.buyDate], ['Buy Location', r.buyLocation],
+    ['Sale Date', r.saleDate], ['Sale Location', r.saleLocation],
+    ['Lane', r.lane], ['Channel', r.channel],
+    ['Profit %', r.profitPct !== null ? `${r.profitPct}%` : '—'],
+    ['Title Status', r.titleStatus || '—'],
+    ['Sale Invoice Status', r.saleInvoiceStatus || '—'],
+    ['Mileage', r.mileage ? r.mileage.toLocaleString() : '—'],
+    ['Match Type', r.isFuzzy ? r.matchType : 'Exact VIN'],
+  ];
+  return (
+    <div style={{ padding: '10px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px 20px' }}>
+      {fields.map(([label, value]) => (
+        <div key={label}>
+          <div style={{ fontSize: 9.5, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>{label}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{value || '—'}</div>
+        </div>
+      ))}
     </div>
   );
 }
