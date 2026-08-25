@@ -53,7 +53,7 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
   const vmvTitleIssues = (normalized['Value My Vehicle'] || []).filter(r => r.titleStatus === 'Unavailable').length;
 
   return (
-    <aside style={{ width:236, minWidth:236, background:SB_BG, borderRight:`1px solid ${SB_BORDER}`, display:'flex', flexDirection:'column', boxShadow:'2px 0 12px rgba(0,0,0,0.25)', zIndex:2 }}>
+    <aside style={{ width:254, minWidth:254, background:SB_BG, borderRight:`1px solid ${SB_BORDER}`, display:'flex', flexDirection:'column', boxShadow:'2px 0 12px rgba(0,0,0,0.25)', zIndex:2 }}>
       {/* Logo */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 14px 13px', borderBottom:`1px solid ${SB_BORDER}` }}>
         <div style={{ width:34, height:34, borderRadius:9, background:'rgba(129,140,248,0.16)', border:'1px solid rgba(129,140,248,0.35)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -146,7 +146,7 @@ function Btn({ active, color, onClick, children }) {
   const c = color || SB_ACCENT;
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px 7px 8px', border:'none', borderLeft: active?`3px solid ${c}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: active?hexToRgba(c, 0.14):'transparent', color: active?SB_TEXT:SB_TEXT2, fontSize:12, fontWeight: active?800:600, letterSpacing:'0.4px', cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px 7px 8px', border:'none', borderLeft: active?`3px solid ${c}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: active?hexToRgba(c, 0.14):'transparent', color: active?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: active?800:600, letterSpacing:'0.2px', cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
       onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
       onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
     >
