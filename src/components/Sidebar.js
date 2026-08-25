@@ -73,7 +73,7 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
             <span style={{ width:26, height:26, borderRadius:7, background:hexToRgba(n.color,0.16), display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               {n.icon}
             </span>
-            <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{n.label}</span>
+            <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textTransform:'uppercase' }}>{n.label}</span>
             {n.id === 'crossmatch' && crossMatch.matched.length > 0 && (
               <span style={{ fontSize:10, background:'rgba(139,92,246,0.22)', color:'#a78bfa', padding:'1px 7px', borderRadius:10, fontWeight:700, flexShrink:0 }}>
                 {crossMatch.matched.length}
@@ -108,12 +108,12 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
           return (
             <button key={sheet.label}
               onClick={() => onNav('sheet', sheet.label)}
-              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}22`:'transparent', color: meta.color || SB_TEXT2, fontSize:12, fontWeight: isActive?700:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background=SB_HOVER; }}}
-              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; }}}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px 8px 8px', border:'none', borderLeft: isActive?`3px solid ${meta.color}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: isActive?`${meta.color}22`:'transparent', color: isActive?SB_TEXT:SB_TEXT2, fontSize:11.5, fontWeight: isActive?800:600, letterSpacing:'0.3px', cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background=SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
+              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
             >
               <Circle size={8} fill={meta.color} color={meta.color} style={{ flexShrink:0 }}/>
-              <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sheet.label}</span>
+              <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textTransform:'uppercase' }}>{sheet.label}</span>
               {stat && <span style={{ fontSize:10, color:SB_TEXT3, fontFamily:'var(--mono)', flexShrink:0 }}>{stat.count.toLocaleString()}</span>}
             </button>
           );
@@ -146,9 +146,9 @@ function Btn({ active, color, onClick, children }) {
   const c = color || SB_ACCENT;
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px', border: active?`1px solid ${hexToRgba(c, 0.35)}`:'1px solid transparent', borderRadius:8, margin:'1px 2px', background: active?hexToRgba(c, 0.15):'transparent', color: c, fontSize:13, fontWeight: active?700:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=SB_HOVER; }}}
-      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; }}}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'7px 10px 7px 8px', border:'none', borderLeft: active?`3px solid ${c}`:'3px solid transparent', borderRadius:6, margin:'1px 2px', background: active?hexToRgba(c, 0.14):'transparent', color: active?SB_TEXT:SB_TEXT2, fontSize:12, fontWeight: active?800:600, letterSpacing:'0.4px', cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=SB_HOVER; e.currentTarget.style.color=SB_TEXT; }}}
+      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=SB_TEXT2; }}}
     >
       {children}
     </button>
