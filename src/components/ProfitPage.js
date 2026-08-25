@@ -85,6 +85,16 @@ export default function ProfitPage() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [dateFilterId, setDateFilterId]     = useState('all');
   const [minLocationCars, setMinLocationCars] = useState(2);
+  // Which of the 5 big table sections are expanded — collapsed by default so
+  // every section's title is visible on screen at once; click one to open
+  // it. (Charts/KPIs above stay always-visible — this is only for the
+  // heavy tables below them.)
+  const [openSections, setOpenSections] = useState(new Set());
+  const toggleSection = id => setOpenSections(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [expandedLocations, setExpandedLocations] = useState(new Set());
   const [expandedPlatforms, setExpandedPlatforms] = useState(new Set());
   const [expandedCars, setExpandedCars] = useState(new Set());
@@ -456,7 +466,10 @@ export default function ProfitPage() {
       {/* Buying platform breakdown table — right below the charts, since
           this is the highest-value at-a-glance number: which platform to
           keep buying from. */}
-      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars."
+      <CollapsibleCard id="platform" accent="#6366f1" icon={<Building2 size={16} color="#6366f1" style={{ flexShrink: 0 }} />}
+        title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars."
+        summary={`${byPlatform.length} platform${byPlatform.length === 1 ? '' : 's'}`}
+        open={openSections.has('platform')} onToggle={toggleSection}
         headerExtra={<ExportBtn onClick={() => exportRowsToExcel(byPlatform.map(p => ({ ...p, source: p.source })), [{ key: 'source', header: 'Platform' }, { key: 'count', header: 'Cars' }, { key: 'avgCost', header: 'Avg Buy Cost' }, { key: 'avgProfit', header: 'Avg Profit' }, { key: 'profit', header: 'Total Profit' }], 'profit_by_platform')} />}
       >
         <div style={{ overflowX: 'auto' }}>
@@ -505,7 +518,7 @@ export default function ProfitPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </CollapsibleCard>
 
       {/* Profit by buying location */}
       <Card
@@ -546,7 +559,10 @@ export default function ProfitPage() {
       </Card>
 
       {/* Location breakdown table — every location, unfiltered by the min-cars threshold */}
-      <Card title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden. Click a row to see the individual cars."
+      <CollapsibleCard id="location" accent="#0ea5e9" icon={<MapPin size={16} color="#0ea5e9" style={{ flexShrink: 0 }} />}
+        title="Buying Location Breakdown — All Locations" subtitle="Sorted by avg profit; low-count locations included so nothing's hidden. Click a row to see the individual cars."
+        summary={`${byLocationAll.length} location${byLocationAll.length === 1 ? '' : 's'}`}
+        open={openSections.has('location')} onToggle={toggleSection}
         headerExtra={<ExportBtn onClick={() => exportRowsToExcel(byLocationAll, [{ key: 'location', header: 'Location' }, { key: 'count', header: 'Cars' }, { key: 'avgCost', header: 'Avg Buy Cost' }, { key: 'avgProfit', header: 'Avg Profit' }, { key: 'profit', header: 'Total Profit' }], 'profit_by_location')} />}
       >
         <div style={{ overflowX: 'auto' }}>
@@ -594,13 +610,15 @@ export default function ProfitPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </CollapsibleCard>
 
       {/* Losing cars — worst loss first, Days Held called out since a car
           that lost money AND sat a long time is the clearest problem signal. */}
-      <Card
-        title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><TriangleAlert size={15} color={RED} />Losing Cars</span>}
+      <CollapsibleCard id="losing" accent={RED} icon={<TriangleAlert size={16} color={RED} style={{ flexShrink: 0 }} />}
+        title="Losing Cars"
         subtitle={`${losingCars.length.toLocaleString()} car${losingCars.length === 1 ? '' : 's'} sold below buy cost — worst loss first, with how long each sat before selling. Click a row for full details.`}
+        summary={`${losingCars.length.toLocaleString()} car${losingCars.length === 1 ? '' : 's'}`}
+        open={openSections.has('losing')} onToggle={toggleSection}
         headerExtra={<ExportBtn onClick={() => exportRowsToExcel(losingCars, EXPORT_COLUMNS, 'losing_cars')} />}
       >
         {losingCars.length === 0 ? <Empty text="No losing cars in this filter — nice." /> : (
@@ -664,10 +682,13 @@ export default function ProfitPage() {
             )}
           </div>
         )}
-      </Card>
+      </CollapsibleCard>
 
       {/* Most / least profitable cars — sortable, searchable, paginated */}
-      <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first. The ✦ icon marks a fuzzy (year/make/model/mileage) match. Click a row for full details."
+      <CollapsibleCard id="matched" accent="#16a34a" icon={<Trophy size={16} color="#16a34a" style={{ flexShrink: 0 }} />}
+        title="All Matched Cars" subtitle="Sort by any column — default is highest profit first. The ✦ icon marks a fuzzy (year/make/model/mileage) match. Click a row for full details."
+        summary={`${tableFiltered.length.toLocaleString()} car${tableFiltered.length === 1 ? '' : 's'}`}
+        open={openSections.has('matched')} onToggle={toggleSection}
         headerExtra={<ExportBtn onClick={() => exportRowsToExcel(tableFiltered, EXPORT_COLUMNS, 'matched_cars')} />}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -765,13 +786,15 @@ export default function ProfitPage() {
             </div>
           </div>
         )}
-      </Card>
+      </CollapsibleCard>
 
       {/* Unmatched — its own clearly separated section, not just a banner,
           with what we DO know so these can be checked by hand. */}
-      <Card
-        title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><AlertTriangle size={15} color="#f59e0b" />Couldn't Match ({unmatched.length.toLocaleString()})</span>}
+      <CollapsibleCard id="unmatched" accent="#f59e0b" icon={<AlertTriangle size={16} color="#f59e0b" style={{ flexShrink: 0 }} />}
+        title={`Couldn't Match (${unmatched.length.toLocaleString()})`}
         subtitle="Manheim-sold cars with no buy record in any of the 5 sources, even after fuzzy year/make/model/mileage matching. Usually the buy happened before that source's sheet started, or it was bought outside the 5 tracked platforms."
+        summary={`${unmatched.length.toLocaleString()} car${unmatched.length === 1 ? '' : 's'}`}
+        open={openSections.has('unmatched')} onToggle={toggleSection}
         headerExtra={<ExportBtn onClick={() => exportRowsToExcel(unmatchedFiltered, [{ key: 'vehicle', header: 'Vehicle' }, { key: 'vin', header: 'VIN' }, { key: 'mileage', header: 'Mileage' }, { key: 'saleDate', header: 'Sale Date' }, { key: 'salePrice', header: 'Sale Price' }, { key: 'titleStatus', header: 'Title Status' }], 'unmatched_cars')} />}
       >
         <div style={{ position: 'relative', marginBottom: 12, maxWidth: 320 }}>
@@ -818,7 +841,7 @@ export default function ProfitPage() {
             )}
           </>
         )}
-      </Card>
+      </CollapsibleCard>
     </div>
   );
 }
@@ -937,6 +960,38 @@ function Card({ title, subtitle, headerExtra, children }) {
       </div>
       {subtitle && <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 14, textAlign: 'left' }}>{subtitle}</p>}
       {children}
+    </div>
+  );
+}
+
+// A big-table section — collapsed by default, header always visible (with
+// an accent-colored count badge) so all 5 section titles fit on screen at
+// once and you click whichever one you actually want to look at, instead
+// of scrolling past 4 huge tables to find the one you want.
+function CollapsibleCard({ id, accent, icon, title, subtitle, summary, headerExtra, open, onToggle, children }) {
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 13, boxShadow: 'var(--shadow-sm)', textAlign: 'left', overflow: 'hidden', borderLeft: `3px solid ${open ? accent : 'var(--border)'}`, transition: 'border-color 0.15s' }}>
+      <div onClick={() => onToggle(id)}
+        style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        {open ? <ChevronDown size={16} color={accent} style={{ flexShrink: 0 }} /> : <ChevronRight size={16} color="var(--text3)" style={{ flexShrink: 0 }} />}
+        {icon}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{title}</h3>
+            {summary && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent, background: `${accent}18`, border: `1px solid ${accent}40`, padding: '2px 10px', borderRadius: 20 }}>
+                {summary}
+              </span>
+            )}
+          </div>
+          {subtitle && <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 3 }}>{subtitle}</p>}
+        </div>
+        {headerExtra && <div onClick={e => e.stopPropagation()}>{headerExtra}</div>}
+      </div>
+      {open && <div style={{ padding: '0 18px 18px' }}>{children}</div>}
     </div>
   );
 }

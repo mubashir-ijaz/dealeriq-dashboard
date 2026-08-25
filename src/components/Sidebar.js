@@ -5,16 +5,25 @@ import { SOURCE_META } from '../utils/schema';
 import { LayoutDashboard, GitMerge, MessageSquare, Car, Circle, FileCheck, Calendar, LogOut, Trophy, DollarSign } from 'lucide-react';
 
 const NAV = [
-  { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview'         },
-  { id:'activity',   icon:<Calendar size={15}/>,        label:'Activity'         },
-  { id:'profit',     icon:<DollarSign size={15}/>,      label:'Profit'           },
-  { id:'crossmatch', icon:<GitMerge size={15}/>,        label:'Cross-Match VINs' },
-  { id:'titles',     icon:<FileCheck size={15}/>,       label:'Title Status'     },
-  { id:'carmax',     icon:<Car size={15}/>,             label:'CarMax'           },
-  { id:'vmv',        icon:<Car size={15}/>,             label:'Value My Vehicle' },
-  { id:'backlots',   icon:<Trophy size={15}/>,          label:"Today's Opportunities" },
-  { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant'     },
+  { id:'overview',   icon:<LayoutDashboard size={15}/>, label:'Overview',              color:'#6366f1' },
+  { id:'activity',   icon:<Calendar size={15}/>,        label:'Activity',              color:'#0ea5e9' },
+  { id:'profit',     icon:<DollarSign size={15}/>,      label:'Profit',                color:'#16a34a' },
+  { id:'crossmatch', icon:<GitMerge size={15}/>,        label:'Cross-Match VINs',      color:'#8b5cf6' },
+  { id:'titles',     icon:<FileCheck size={15}/>,       label:'Title Status',          color:'#f59e0b' },
+  { id:'carmax',     icon:<Car size={15}/>,             label:'CarMax',                color:'#ef4444' },
+  { id:'vmv',        icon:<Car size={15}/>,             label:'Value My Vehicle',      color:'#ec4899' },
+  { id:'backlots',   icon:<Trophy size={15}/>,          label:"Today's Opportunities", color:'#eab308' },
+  { id:'chat',       icon:<MessageSquare size={15}/>,   label:'AI Assistant',          color:'#06b6d4' },
 ];
+
+// hex -> rgba, for tinted backgrounds/borders per nav color above
+function hexToRgba(hex, a) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
 export default function Sidebar({ page, active, onNav, onLogout }) {
   const { sheets, stats, crossMatch, normalized } = useData();
@@ -49,7 +58,7 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
       <nav style={{ padding:'10px 7px 0' }}>
         <Lbl>Dashboard</Lbl>
         {NAV.map(n => (
-          <Btn key={n.id} active={page===n.id && !active} onClick={()=>onNav(n.id)}>
+          <Btn key={n.id} active={page===n.id && !active} color={n.color} onClick={()=>onNav(n.id)}>
             {n.icon}
             <span style={{ flex:1 }}>{n.label}</span>
             {n.id === 'crossmatch' && crossMatch.matched.length > 0 && (
@@ -86,9 +95,9 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
           return (
             <button key={sheet.label}
               onClick={() => onNav('sheet', sheet.label)}
-              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}18`:'transparent', color: isActive?meta.color:'var(--text2)', fontSize:12, fontWeight: isActive?700:400, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--text)'; }}}
-              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text2)'; }}}
+              style={{ display:'flex', alignItems:'center', gap:8, width:'calc(100% - 4px)', padding:'8px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: isActive?`${meta.color}18`:'transparent', color: meta.color || 'var(--text2)', fontSize:12, fontWeight: isActive?700:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+              onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.background='var(--hover)'; }}}
+              onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.background='transparent'; }}}
             >
               <Circle size={8} fill={meta.color} color={meta.color} style={{ flexShrink:0 }}/>
               <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sheet.label}</span>
@@ -120,12 +129,13 @@ export default function Sidebar({ page, active, onNav, onLogout }) {
 function Lbl({ children }) {
   return <div style={{ fontSize:9, fontWeight:700, letterSpacing:'1.5px', textTransform:'uppercase', color:'var(--text3)', padding:'3px 10px 5px' }}>{children}</div>;
 }
-function Btn({ active, onClick, children }) {
+function Btn({ active, color, onClick, children }) {
+  const c = color || 'var(--accent)';
   return (
     <button onClick={onClick}
-      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'9px 10px', border:'none', borderRadius:8, margin:'1px 2px', background: active?'rgba(79,70,229,0.1)':'transparent', color: active?'var(--accent)':'var(--text2)', fontSize:13, fontWeight: active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
-      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--text)'; }}}
-      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text2)'; }}}
+      style={{ display:'flex', alignItems:'center', gap:9, width:'calc(100% - 4px)', padding:'9px 10px', border: active?`1px solid ${hexToRgba(color || '#4f46e5', 0.3)}`:'1px solid transparent', borderRadius:8, margin:'1px 2px', background: active?hexToRgba(color || '#4f46e5', 0.12):'transparent', color: c, fontSize:13, fontWeight: active?700:600, cursor:'pointer', transition:'all 0.15s', fontFamily:'var(--font)' }}
+      onMouseEnter={e=>{ if(!active){ e.currentTarget.style.background=hexToRgba(color || '#4f46e5', 0.08); }}}
+      onMouseLeave={e=>{ if(!active){ e.currentTarget.style.background='transparent'; }}}
     >
       {children}
     </button>

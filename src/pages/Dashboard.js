@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { SHEETS } from '../utils/sheets';
+import { SOURCE_META } from '../utils/schema';
 import Sidebar from '../components/Sidebar';
 import Overview from '../components/Overview';
 import SheetView from '../components/SheetView';
@@ -17,16 +18,25 @@ import ProfitPage from '../components/ProfitPage';
 import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, GitMerge, FileCheck, MessageSquare, Trophy, Car, DollarSign } from 'lucide-react';
 
 const PAGE_INFO = {
-  overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
-  activity:   { title: 'Activity',         subtitle: 'Recent purchases by source, newest first',                       icon: Calendar },
-  profit:     { title: 'Profit',           subtitle: 'Manheim sales matched to buy cost — most profitable cars, by date, by buying location', icon: DollarSign },
-  crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
-  titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
-  carmax:     { title: 'CarMax',           subtitle: 'Browse all CarMax purchases, filter to title-issue cars, and export to Excel', icon: Car },
-  vmv:        { title: 'Value My Vehicle', subtitle: 'Browse all Value My Vehicle purchases, filter to title-issue cars, and export to Excel', icon: Car },
-  backlots:   { title: "Today's Opportunities", subtitle: 'Profitable candidate cars from the backlots auto-scraping pipeline', icon: Trophy },
-  chat:       { title: 'AI Assistant',     subtitle: 'Ask questions about your purchase data',                         icon: MessageSquare },
+  overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard, color: '#6366f1' },
+  activity:   { title: 'Activity',         subtitle: 'Recent purchases by source, newest first',                       icon: Calendar, color: '#0ea5e9' },
+  profit:     { title: 'Profit',           subtitle: 'Manheim sales matched to buy cost — most profitable cars, by date, by buying location', icon: DollarSign, color: '#16a34a' },
+  crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge, color: '#8b5cf6' },
+  titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck, color: '#f59e0b' },
+  carmax:     { title: 'CarMax',           subtitle: 'Browse all CarMax purchases, filter to title-issue cars, and export to Excel', icon: Car, color: '#ef4444' },
+  vmv:        { title: 'Value My Vehicle', subtitle: 'Browse all Value My Vehicle purchases, filter to title-issue cars, and export to Excel', icon: Car, color: '#ec4899' },
+  backlots:   { title: "Today's Opportunities", subtitle: 'Profitable candidate cars from the backlots auto-scraping pipeline', icon: Trophy, color: '#eab308' },
+  chat:       { title: 'AI Assistant',     subtitle: 'Ask questions about your purchase data',                         icon: MessageSquare, color: '#06b6d4' },
 };
+
+// hex -> rgba, for the topbar's per-page tinted icon box
+function hexToRgba(hex, a) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
 export default function Dashboard({ onLogout }) {
   const { loading, error, reload, lastRefresh, duplicatesRemoved } = useData();
@@ -60,6 +70,8 @@ export default function Dashboard({ onLogout }) {
   const title = page === 'sheet' ? active : info?.title;
   const subtitle = page === 'sheet' ? `Raw ${active} data, browsable and searchable` : info?.subtitle;
   const TitleIcon = info?.icon;
+  const sheetSource = page === 'sheet' ? SHEETS.find(s => s.label === active)?.source : null;
+  const titleColor = page === 'sheet' ? (SOURCE_META[sheetSource]?.color || '#6366f1') : (info?.color || '#6366f1');
   const nav   = (p, sh) => { setPage(p); if (sh !== undefined) setActive(sh); };
   const showDateFilter = ['overview','activity','crossmatch','titles','carmax','vmv'].includes(page);
 
@@ -73,11 +85,11 @@ export default function Dashboard({ onLogout }) {
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:9 }}>
               {TitleIcon && (
-                <div style={{ width:30, height:30, borderRadius:8, background:'rgba(79,70,229,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <TitleIcon size={16} color="var(--accent)" />
+                <div style={{ width:30, height:30, borderRadius:8, background:hexToRgba(titleColor, 0.12), border:`1px solid ${hexToRgba(titleColor, 0.3)}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <TitleIcon size={16} color={titleColor} />
                 </div>
               )}
-              <h1 style={{ fontSize:19, fontWeight:800, letterSpacing:'-0.3px' }}>{title}</h1>
+              <h1 style={{ fontSize:19, fontWeight:800, letterSpacing:'-0.3px', color:titleColor }}>{title}</h1>
             </div>
             {subtitle && <p style={{ fontSize:12.5, color:'var(--text2)', marginTop:3, marginLeft: TitleIcon ? 39 : 0 }}>{subtitle}</p>}
             {lastRefresh && (
