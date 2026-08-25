@@ -81,7 +81,13 @@ export default function PurchasesTab({ sheetLabel, source, itemLabel }) {
   }), [baseRows, soldByVin]);
   const soldCount = useMemo(() => rows.filter(r => r.sold).length, [rows]);
 
-  const [statusFilter, setStatusFilter] = useState('Unavailable');
+  // Defaults to "all" — this page's own subtitle says "Browse all ... purchases,
+  // filter to title-issue cars" (title-issue is an available filter, not the
+  // starting view). Confirmed live 2026-08-25: defaulting to the narrow
+  // "Unavailable" subset (a few dozen cars) made it look like most cars —
+  // including sold ones with profit — simply weren't there when searching by
+  // VIN, since they were filtered out before the search even ran.
+  const [statusFilter, setStatusFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
   const [search,  setSearch]  = useState('');
   const [sortCol, setSortCol] = useState('date');

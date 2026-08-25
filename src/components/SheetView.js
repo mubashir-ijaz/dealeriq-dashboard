@@ -221,6 +221,11 @@ export default function SheetView({ label }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
+                {vinCol && (
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1 }}>
+                    Sold (Manheim)
+                  </th>
+                )}
                 {columns.map(col => (
                   <th key={col} onClick={() => handleSort(col)}
                     style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: sortCol === col ? meta.color : 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>
@@ -243,11 +248,6 @@ export default function SheetView({ label }) {
                     </span>
                   </th>
                 )}
-                {vinCol && (
-                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1 }}>
-                    Sold (Manheim)
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody>
@@ -257,6 +257,21 @@ export default function SheetView({ label }) {
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
                   onMouseLeave={e => e.currentTarget.style.background = ''}
                 >
+                  {vinCol && (
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', borderRight: '1px solid var(--border)' }}>
+                      {row.sold ? (
+                        <span title={`Sold ${row.soldDate} for $${Math.round(row.soldPrice).toLocaleString()}`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: row.soldProfit >= 0 ? '#10b981' : '#ef4444' }}>
+                          <DollarSign size={11} />{row.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(row.soldProfit).toLocaleString()}
+                          {row.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· {row.soldDaysHeld}d</span>}
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text3)' }}>
+                          <Clock3 size={10} /> Waiting to sell
+                        </span>
+                      )}
+                    </td>
+                  )}
                   {columns.map(col => {
                     const val = row[col] ?? '';
                     const isUrl = String(val).startsWith('http');
@@ -283,21 +298,6 @@ export default function SheetView({ label }) {
                   {dateCol && (
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', fontSize: 11, color: row.ageDays >= 30 ? '#ef4444' : 'var(--text2)', fontWeight: row.ageDays >= 30 ? 700 : 400, whiteSpace: 'nowrap' }}>
                       {formatAge(row.ageDays)}
-                    </td>
-                  )}
-                  {vinCol && (
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                      {row.sold ? (
-                        <span title={`Sold ${row.soldDate} for $${Math.round(row.soldPrice).toLocaleString()}`}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: row.soldProfit >= 0 ? '#10b981' : '#ef4444' }}>
-                          <DollarSign size={11} />{row.soldProfit >= 0 ? '+' : ''}{'$' + Math.round(row.soldProfit).toLocaleString()}
-                          {row.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· {row.soldDaysHeld}d</span>}
-                        </span>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text3)' }}>
-                          <Clock3 size={10} /> Waiting to sell
-                        </span>
-                      )}
                     </td>
                   )}
                 </tr>
@@ -516,9 +516,13 @@ function GalleryGrid({ rows, columns, meta, source, pageOffset = 0, onOpen }) {
                 </div>
               )}
               {row.sold ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontFamily: 'var(--mono)', color: row.soldProfit >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
-                  <DollarSign size={10} /> Sold {row.soldDate} for {'$' + Math.round(row.soldPrice).toLocaleString()}
-                  {row.soldDaysHeld !== null && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>({row.soldDaysHeld}d held)</span>}
+                <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: row.soldProfit >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                    <DollarSign size={10} /> Sold {'$' + Math.round(row.soldPrice).toLocaleString()}
+                  </div>
+                  <div style={{ color: 'var(--text3)', fontWeight: 400, marginTop: 1 }}>
+                    {String(row.soldDate).split(' ')[0]}{row.soldDaysHeld !== null ? ` · ${row.soldDaysHeld}d held` : ''}
+                  </div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: 'var(--text3)' }}>
