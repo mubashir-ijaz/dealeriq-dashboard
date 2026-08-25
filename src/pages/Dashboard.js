@@ -6,7 +6,6 @@ import Sidebar from '../components/Sidebar';
 import Overview from '../components/Overview';
 import SheetView from '../components/SheetView';
 import CrossMatch from '../components/CrossMatch';
-import ChartsPage from '../components/ChartsPage';
 import ChatBot from '../components/ChatBot';
 import TitleStatus from '../components/TitleStatus';
 import CarMaxTab from '../components/CarMaxTab';
@@ -15,12 +14,11 @@ import DateFilter from '../components/DateFilter';
 import Activity from '../components/Activity';
 import BacklotsOpportunities from '../components/BacklotsOpportunities';
 import ProfitPage from '../components/ProfitPage';
-import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, BarChart2, GitMerge, FileCheck, MessageSquare, Trophy, Car, DollarSign } from 'lucide-react';
+import { RefreshCw, Loader, AlertCircle, LayoutDashboard, Calendar, GitMerge, FileCheck, MessageSquare, Trophy, Car, DollarSign } from 'lucide-react';
 
 const PAGE_INFO = {
   overview:   { title: 'Overview',         subtitle: 'A snapshot of every vehicle purchase across all your sources',   icon: LayoutDashboard },
   activity:   { title: 'Activity',         subtitle: 'Recent purchases by source, newest first',                       icon: Calendar },
-  charts:     { title: 'Charts & Trends',  subtitle: 'Spend, makes, and purchase volume at a glance',                  icon: BarChart2 },
   profit:     { title: 'Profit',           subtitle: 'Manheim sales matched to buy cost — most profitable cars, by date, by buying location', icon: DollarSign },
   crossmatch: { title: 'Cross-Match VINs', subtitle: 'Vehicles that show up in more than one source',                  icon: GitMerge },
   titles:     { title: 'Title Status',     subtitle: 'Which vehicles are still waiting on title paperwork',            icon: FileCheck },
@@ -63,7 +61,7 @@ export default function Dashboard({ onLogout }) {
   const subtitle = page === 'sheet' ? `Raw ${active} data, browsable and searchable` : info?.subtitle;
   const TitleIcon = info?.icon;
   const nav   = (p, sh) => { setPage(p); if (sh !== undefined) setActive(sh); };
-  const showDateFilter = ['overview','activity','charts','crossmatch','titles','carmax','vmv'].includes(page);
+  const showDateFilter = ['overview','activity','crossmatch','titles','carmax','vmv'].includes(page);
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
@@ -106,7 +104,6 @@ export default function Dashboard({ onLogout }) {
         <div style={{ flex:1, overflow:'auto', padding:'20px 24px', animation:'fadeUp 0.25s ease' }}>
           {page === 'overview'   && <Overview />}
           {page === 'activity'   && <Activity />}
-          {page === 'charts'     && <ChartsPage />}
           {page === 'profit'     && <ProfitPage />}
           {page === 'crossmatch' && <CrossMatch />}
           {page === 'titles'     && <TitleStatus />}

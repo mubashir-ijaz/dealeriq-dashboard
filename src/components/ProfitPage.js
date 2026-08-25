@@ -14,12 +14,13 @@ import { parseDate, SOURCE_META } from '../utils/schema';
 import { DATE_FILTERS, getDateCutoff } from '../utils/dateFilter';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell, LabelList,
 } from 'recharts';
 import {
   DollarSign, TrendingUp, TrendingDown, MapPin, Search, ArrowUpDown,
   ArrowUp, ArrowDown, AlertTriangle, Trophy, Filter, X, Building2,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, ChevronsLeft, ChevronLeft, ChevronsRight,
+  Clock, TriangleAlert, Sparkles,
 } from 'lucide-react';
 
 const fmt   = n => '$' + Math.round(n || 0).toLocaleString();
@@ -54,7 +55,9 @@ export default function ProfitPage() {
   const [sortKey, setSortKey] = useState('profit');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage]       = useState(0);
-  const PAGE_SIZE = 50;
+  const [pageSize, setPageSize] = useState(50);
+  const [unmatchedSearch, setUnmatchedSearch] = useState('');
+  const [unmatchedPage, setUnmatchedPage] = useState(0);
 
   // Filters
   const [sourceFilter, setSourceFilter]     = useState(new Set()); // empty = all
@@ -73,7 +76,11 @@ export default function ProfitPage() {
 
   const parsed = useMemo(() => rows.map(r => ({
     vin:        r.VIN || '',
+    year:       r.Year || '',
+    make:       r.Make || '',
+    model:      r.Model || '',
     vehicle:    [r.Year, r.Make, r.Model].filter(Boolean).join(' '),
+    mileage:    num(r.Mileage),
     buySource:  r.Buy_Source || '',
     buyDate:    r.Buy_Date || '',
     buyLocation: r.Buy_Location || '—',
@@ -84,6 +91,8 @@ export default function ProfitPage() {
     profitPct:  num(r.Profit_Pct),
     daysHeld:   num(r.Days_Held),
     titleStatus: r.Title_Status || '',
+    matchType:  r.Match_Type || '',
+    isFuzzy:    (r.Match_Type || '').startsWith('Fuzzy'),
     matched:    r.Matched === 'Yes',
   })), [rows]);
 
@@ -197,10 +206,31 @@ export default function ProfitPage() {
   // Reset to page 0 whenever the underlying result set changes shape —
   // otherwise a narrower filter/search can leave `page` pointing past the
   // end of the new (shorter) list.
-  useEffect(() => { setPage(0); }, [filtered, search, sortKey, sortDir]);
+  useEffect(() => { setPage(0); }, [filtered, search, sortKey, sortDir, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(tableFiltered.length / PAGE_SIZE));
-  const pagedTable  = tableFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(tableFiltered.length / pageSize));
+  const pagedTable  = tableFiltered.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Losing cars — sold below buy cost, worst loss first. Days Held called
+  // out explicitly since a car that lost money AND sat a long time is the
+  // clearest "stop buying/holding like this" signal.
+  const losingCars = useMemo(() =>
+    [...filtered].filter(r => r.profit < 0).sort((a, b) => a.profit - b.profit), [filtered]);
+  const LOSING_CAP = 100;
+
+  // Unmatched — Manheim-sold cars with no buy record anywhere. Its own
+  // section (not just a warning banner) with what we DO know (year/make/
+  // model/mileage/sale info) so they're checkable by hand.
+  const unmatchedFiltered = useMemo(() => {
+    let list = unmatchedSearch
+      ? unmatched.filter(r => r.vin.toLowerCase().includes(unmatchedSearch.toLowerCase()) || r.vehicle.toLowerCase().includes(unmatchedSearch.toLowerCase()))
+      : unmatched;
+    return [...list].sort((a, b) => (parseDate(b.saleDate)?.getTime() || 0) - (parseDate(a.saleDate)?.getTime() || 0));
+  }, [unmatched, unmatchedSearch]);
+  useEffect(() => { setUnmatchedPage(0); }, [unmatchedSearch]);
+  const UNMATCHED_PAGE_SIZE = 50;
+  const unmatchedTotalPages = Math.max(1, Math.ceil(unmatchedFiltered.length / UNMATCHED_PAGE_SIZE));
+  const pagedUnmatched = unmatchedFiltered.slice(unmatchedPage * UNMATCHED_PAGE_SIZE, (unmatchedPage + 1) * UNMATCHED_PAGE_SIZE);
 
   const toggleSort = key => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -338,7 +368,7 @@ export default function ProfitPage() {
       {unmatched.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: 'var(--text2)' }}>
           <AlertTriangle size={15} color="#f59e0b" style={{ flexShrink: 0 }} />
-          <span><strong style={{ color: '#f59e0b' }}>{unmatched.length}</strong> Manheim-sold car{unmatched.length === 1 ? '' : 's'} couldn't be matched to a buy record in any source — not counted above. Usually means the buy happened before that source's sheet started, or the VIN was mistyped on export.</span>
+          <span><strong style={{ color: '#f59e0b' }}>{unmatched.length}</strong> Manheim-sold car{unmatched.length === 1 ? '' : 's'} couldn't be matched to a buy record — not counted above. See "Couldn't Match" near the bottom of this page for the full list.</span>
         </div>
       )}
 
@@ -367,7 +397,7 @@ export default function ProfitPage() {
         <Card title="Profit by Buying Platform" subtitle="Avg profit per car through each buying platform">
           {byPlatform.length === 0 ? <Empty text="No data in this filter" /> : (
             <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={byPlatform} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+              <BarChart data={byPlatform} margin={{ top: 20, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
                 <XAxis dataKey="source" tick={{ ...AXIS, fontSize: 10.5 }} interval={0} angle={-12} textAnchor="end" height={44} />
                 <YAxis tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
@@ -375,14 +405,67 @@ export default function ProfitPage() {
                   contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
                   formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
                 />
-                <Bar dataKey="avgProfit" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                <Bar dataKey="avgProfit" radius={[5, 5, 0, 0]} isAnimationActive={false}>
                   {byPlatform.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  <LabelList dataKey="avgProfit" position="top" formatter={v => fmt(v)} style={{ fontSize: 11, fontWeight: 700, fill: '#12131a' }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </Card>
       </div>
+
+      {/* Buying platform breakdown table — right below the charts, since
+          this is the highest-value at-a-glance number: which platform to
+          keep buying from. */}
+      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars.">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                <Th></Th>
+                <Th>Platform</Th>
+                <Th align="right">Cars</Th>
+                <Th align="right">Avg Buy Cost</Th>
+                <Th align="right">Avg Profit</Th>
+                <Th align="right">Total Profit</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {byPlatform.map(p => {
+                const open = expandedPlatforms.has(p.source);
+                return (
+                  <React.Fragment key={p.source}>
+                    <tr onClick={() => togglePlatformExpand(p.source)}
+                      style={{ borderBottom: open ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '8px 4px', width: 20 }}>
+                        {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+                      </td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Building2 size={12} color={p.color} />
+                        <span style={{ color: p.color }}>{p.source}</span>
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{p.count}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(p.avgCost)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: p.avgProfit >= 0 ? GREEN : RED }}>{fmt(p.avgProfit)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: p.profit >= 0 ? GREEN : RED }}>{fmt(p.profit)}</td>
+                    </tr>
+                    {open && (
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td colSpan={6} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
+                          <CarsSubTable cars={carsForPlatform(p.source)} cap={EXPAND_CAP} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Profit by buying location */}
       <Card
@@ -400,7 +483,7 @@ export default function ProfitPage() {
       >
         {byLocationChart.length === 0 ? <Empty text="No location has enough cars at this threshold — lower Min cars/location above" /> : (
           <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={byLocationChart} layout="vertical" margin={{ top: 4, right: 24, left: 6, bottom: 0 }}>
+            <BarChart data={byLocationChart} layout="vertical" margin={{ top: 4, right: 46, left: 6, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis type="number" tick={AXIS} tickFormatter={v => '$' + Math.round(v / 1000) + 'k'} />
               <YAxis dataKey="location" type="category" tick={{ ...AXIS, fontSize: 10 }} width={130} />
@@ -408,8 +491,9 @@ export default function ProfitPage() {
                 contentStyle={{ background: '#ffffff', border: '1px solid #e6e8f0', borderRadius: 8, fontSize: 12 }}
                 formatter={(v, name, p) => [fmt(v), `Avg Profit (${p.payload.count} cars, avg buy ${fmt(p.payload.avgCost)})`]}
               />
-              <Bar dataKey="avgProfit" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+              <Bar dataKey="avgProfit" radius={[0, 5, 5, 0]} isAnimationActive={false}>
                 {byLocationChart.map((d, i) => <Cell key={i} fill={d.avgProfit >= 0 ? GREEN : RED} />)}
+                <LabelList dataKey="avgProfit" position="right" formatter={v => fmt(v)} style={{ fontSize: 11, fontWeight: 700, fill: '#5b5f6d' }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -470,58 +554,60 @@ export default function ProfitPage() {
         </div>
       </Card>
 
-      {/* Buying platform breakdown table */}
-      <Card title="Buying Platform Breakdown" subtitle="CarMax / Edge / OpenLane / ADESA / Value My Vehicle, side by side. Click a row to see the individual cars.">
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <thead>
-              <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
-                <Th></Th>
-                <Th>Platform</Th>
-                <Th align="right">Cars</Th>
-                <Th align="right">Avg Buy Cost</Th>
-                <Th align="right">Avg Profit</Th>
-                <Th align="right">Total Profit</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {byPlatform.map(p => {
-                const open = expandedPlatforms.has(p.source);
-                return (
-                  <React.Fragment key={p.source}>
-                    <tr onClick={() => togglePlatformExpand(p.source)}
-                      style={{ borderBottom: open ? 'none' : '1px solid var(--border)', cursor: 'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <td style={{ padding: '8px 4px', width: 20 }}>
-                        {open ? <ChevronDown size={13} color="var(--text3)" /> : <ChevronRight size={13} color="var(--text3)" />}
+      {/* Losing cars — worst loss first, Days Held called out since a car
+          that lost money AND sat a long time is the clearest problem signal. */}
+      <Card
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><TriangleAlert size={15} color={RED} />Losing Cars</span>}
+        subtitle={`${losingCars.length.toLocaleString()} car${losingCars.length === 1 ? '' : 's'} sold below buy cost — worst loss first, with how long each sat before selling`}
+      >
+        {losingCars.length === 0 ? <Empty text="No losing cars in this filter — nice." /> : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                  <Th>Vehicle</Th>
+                  <Th>VIN</Th>
+                  <Th>Platform</Th>
+                  <Th align="right">Buy Cost</Th>
+                  <Th align="right">Sale Price</Th>
+                  <Th align="right">Loss</Th>
+                  <Th align="right">Days Held</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {losingCars.slice(0, LOSING_CAP).map(r => {
+                  const meta = metaFor(r.buySource);
+                  const heldLong = r.daysHeld !== null && r.daysHeld >= 90;
+                  return (
+                    <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
+                      <td style={{ padding: '8px 10px', color: meta.color, fontWeight: 600 }}>{r.buySource}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.buyCost)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(r.salePrice)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 800, color: RED }}>{fmt(r.profit)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--mono)', fontWeight: heldLong ? 800 : 400, color: heldLong ? '#f59e0b' : 'var(--text2)' }}>
+                          {heldLong && <Clock size={11} />}
+                          {r.daysHeld ?? '—'}
+                        </span>
                       </td>
-                      <td style={{ padding: '8px 10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <Building2 size={12} color={p.color} />
-                        <span style={{ color: p.color }}>{p.source}</span>
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{p.count}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmt(p.avgCost)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: 700, color: p.avgProfit >= 0 ? GREEN : RED }}>{fmt(p.avgProfit)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)', color: p.profit >= 0 ? GREEN : RED }}>{fmt(p.profit)}</td>
                     </tr>
-                    {open && (
-                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td colSpan={6} style={{ padding: '0 10px 12px 34px', background: 'var(--bg3)' }}>
-                          <CarsSubTable cars={carsForPlatform(p.source)} cap={EXPAND_CAP} />
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  );
+                })}
+              </tbody>
+            </table>
+            {losingCars.length > LOSING_CAP && (
+              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10 }}>
+                Showing worst {LOSING_CAP} of {losingCars.length} by loss size — narrow with the filter bar above to see the rest.
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Most / least profitable cars — sortable, searchable, paginated */}
-      <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first">
+      <Card title="All Matched Cars" subtitle="Sort by any column — default is highest profit first. The ✦ icon marks a fuzzy (year/make/model/mileage) match — hover for details.">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', maxWidth: 320, flex: 1, minWidth: 220 }}>
             <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
@@ -553,7 +639,12 @@ export default function ProfitPage() {
                 return (
                   <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
-                    <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
+                    <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        {r.vin}
+                        {r.isFuzzy && <Sparkles size={11} color="#8b5cf6" title={r.matchType} />}
+                      </span>
+                    </td>
                     <td style={{ padding: '8px 10px' }}>
                       <span style={{ color: meta.color, fontWeight: 600 }}>{r.buySource}</span>
                     </td>
@@ -570,18 +661,82 @@ export default function ProfitPage() {
           </table>
           {tableFiltered.length === 0 && <Empty text="No cars match the current filters" />}
         </div>
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
-            {[['«', () => setPage(0)], ['‹', () => setPage(p => p - 1)]].map(([lbl, fn], idx) => (
-              <PageBtn key={idx} onClick={fn} disabled={page === 0}>{lbl}</PageBtn>
-            ))}
-            <span style={{ fontSize: 12, color: 'var(--text2)', margin: '0 8px', fontFamily: 'var(--mono)' }}>
-              Page {page + 1} of {totalPages}
+        {tableFiltered.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+              Showing <strong style={{ color: 'var(--text2)' }}>{(page * pageSize + 1).toLocaleString()}–{Math.min((page + 1) * pageSize, tableFiltered.length).toLocaleString()}</strong> of <strong style={{ color: 'var(--text2)' }}>{tableFiltered.length.toLocaleString()}</strong>
             </span>
-            {[['›', () => setPage(p => p + 1)], ['»', () => setPage(totalPages - 1)]].map(([lbl, fn], idx) => (
-              <PageBtn key={idx} onClick={fn} disabled={page >= totalPages - 1}>{lbl}</PageBtn>
-            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text3)' }}>
+                Rows/page:
+                <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}
+                  style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 11.5, outline: 'none' }}>
+                  {[25, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <PageBtn onClick={() => setPage(0)} disabled={page === 0}><ChevronsLeft size={14} /></PageBtn>
+                <PageBtn onClick={() => setPage(p => p - 1)} disabled={page === 0}><ChevronLeft size={14} /></PageBtn>
+                <span style={{ fontSize: 12, color: 'var(--text2)', margin: '0 8px', fontFamily: 'var(--mono)', minWidth: 70, textAlign: 'center' }}>
+                  {page + 1} / {totalPages}
+                </span>
+                <PageBtn onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}><ChevronRight size={14} /></PageBtn>
+                <PageBtn onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1}><ChevronsRight size={14} /></PageBtn>
+              </div>
+            </div>
           </div>
+        )}
+      </Card>
+
+      {/* Unmatched — its own clearly separated section, not just a banner,
+          with what we DO know so these can be checked by hand. */}
+      <Card
+        title={<span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><AlertTriangle size={15} color="#f59e0b" />Couldn't Match ({unmatched.length.toLocaleString()})</span>}
+        subtitle="Manheim-sold cars with no buy record in any of the 5 sources, even after fuzzy year/make/model/mileage matching. Usually the buy happened before that source's sheet started, or it was bought outside the 5 tracked platforms."
+      >
+        <div style={{ position: 'relative', marginBottom: 12, maxWidth: 320 }}>
+          <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+          <input value={unmatchedSearch} onChange={e => setUnmatchedSearch(e.target.value)} placeholder="Search VIN or vehicle…"
+            style={{ width: '100%', padding: '9px 12px 9px 34px', background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+        </div>
+        {unmatchedFiltered.length === 0 ? <Empty text="No unmatched cars — everything reconciled." /> : (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, opacity: 0.85 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg3)', textAlign: 'left' }}>
+                    <Th>Vehicle</Th>
+                    <Th>VIN</Th>
+                    <Th align="right">Mileage</Th>
+                    <Th>Sale Date</Th>
+                    <Th align="right">Sale Price</Th>
+                    <Th>Title Status</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedUnmatched.map(r => (
+                    <tr key={r.vin} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.vehicle || '—'}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text2)' }}>{r.vin}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{r.mileage ? r.mileage.toLocaleString() : '—'}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--text2)', fontSize: 11 }}>{r.saleDate}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--mono)' }}>{r.salePrice ? fmt(r.salePrice) : '—'}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--text2)' }}>{r.titleStatus || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {unmatchedTotalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 14 }}>
+                <PageBtn onClick={() => setUnmatchedPage(p => p - 1)} disabled={unmatchedPage === 0}><ChevronLeft size={14} /></PageBtn>
+                <span style={{ fontSize: 12, color: 'var(--text2)', margin: '0 8px', fontFamily: 'var(--mono)' }}>
+                  {unmatchedPage + 1} / {unmatchedTotalPages}
+                </span>
+                <PageBtn onClick={() => setUnmatchedPage(p => p + 1)} disabled={unmatchedPage >= unmatchedTotalPages - 1}><ChevronRight size={14} /></PageBtn>
+              </div>
+            )}
+          </>
         )}
       </Card>
     </div>
